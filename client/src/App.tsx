@@ -1,0 +1,153 @@
+import { useState, useEffect, useCallback } from 'react'
+import { Header } from './components/Header'
+import { PanelLateral } from './components/PanelLateral'
+import { FormularioMoper } from './components/FormularioMoper'
+import { FirmasWorkflow } from './components/FirmasWorkflow'
+import { FooterLegal } from './components/FooterLegal'
+import { generarPDF } from './utils/pdf'
+
+const API = '/api'
+
+export interface RegistroMoper {
+  id?: number
+  folio: string
+  oficial_nombre?: string
+  curp: string
+  fecha_ingreso: string | null
+  fecha_inicio_efectiva: string
+  sueldo_actual: number | null
+  sueldo_nuevo: number
+  motivo: string
+  servicio_actual_nombre?: string
+  servicio_nuevo_nombre?: string
+  puesto_actual_nombre?: string
+  puesto_nuevo_nombre?: string
+  firma_conformidad_at?: string | null
+  firma_conformidad_nombre?: string | null
+  firma_conformidad_imagen?: string | null
+  firma_rh_at?: string | null
+  firma_rh_nombre?: string | null
+  firma_rh_imagen?: string | null
+  firma_gerente_at?: string | null
+  firma_gerente_nombre?: string | null
+  firma_gerente_imagen?: string | null
+  firma_control_at?: string | null
+  firma_control_nombre?: string | null
+  firma_control_imagen?: string | null
+  completado?: boolean
+}
+
+export default function App() {
+  const [folioPreview, setFolioPreview] = useState('SPT/No. 0280/MOP')
+  const [registroId, setRegistroId] = useState<number | null>(null)
+  const [registroCompleto, setRegistroCompleto] = useState<RegistroMoper | null>(null)
+  const [refreshPanel, setRefreshPanel] = useState(0)
+
+  useEffect(() => {
+    fetch(`${API}/folios/preview`).then((r) => r.json()).then((d) => d.folio && setFolioPreview(d.folio)).catch(() => {})
+  }, [])
+
+  const cargarRegistro = useCallback((id: number) => {
+    fetch(`${API}/moper/${id}`)
+      .then((r) => r.json())
+      .then((r) => {
+        setRegistroCompleto(r)
+        if (r.folio) setFolioPreview(r.folio)
+      })
+      .catch(() => setRegistroCompleto(null))
+  }, [])
+
+  const onGuardar = useCallback((id: number, folio: string | null) => {
+    setRegistroId(id)
+    if (folio) setFolioPreview(folio)
+    cargarRegistro(id)
+    setRefreshPanel((k) => k + 1)
+  }, [cargarRegistro])
+
+  const onFirmaRegistrada = useCallback(() => {
+    setRefreshPanel((k) => k + 1)
+    if (registroId != null) cargarRegistro(registroId)
+  }, [registroId, cargarRegistro])
+
+  const onSeleccionarRegistro = useCallback((id: number) => {
+    setRegistroId(id)
+    cargarRegistro(id)
+  }, [cargarRegistro])
+
+  const onGenerarPDF = useCallback(() => {
+    if (registroCompleto) generarPDF(registroCompleto)
+  }, [registroCompleto])
+
+  const actualizarFolioPreview = useCallback(() => {
+    fetch(`${API}/folios/preview`)
+      .then((r) => r.json())
+      .then((d) => d.folio && setFolioPreview(d.folio))
+      .catch(() => {})
+  }, [])
+
+  const onNuevoRegistro = useCallback(() => {
+    setRegistroId(null)
+    setRegistroCompleto(null)
+    actualizarFolioPreview()
+  }, [actualizarFolioPreview])
+
+  return (
+    <div className="min-h-screen flex flex-col bg-white">
+      <Header />
+      <div className="flex-1 flex min-h-0">
+        <PanelLateral
+          registroIdActual={registroId}
+          onSeleccionarRegistro={onSeleccionarRegistro}
+          onNuevoRegistro={onNuevoRegistro}
+          refreshTrigger={refreshPanel}
+        />
+        <main className="flex-1 min-w-0 max-w-4xl mx-auto w-full px-4 py-6 overflow-auto">
+          <p className="text-center font-bold text-oxford-800 text-lg mb-6">
+            Movimiento de Personal (MOPER)
+          </p>
+          <div className="border-2 border-oxford-300 rounded-lg p-4 mb-4 bg-oxford-50/30">
+          <span className="text-oxford-600 text-sm font-medium">Folio: </span>
+          <span className="font-mono font-semibold text-black">
+            {registroCompleto?.folio ?? folioPreview}
+            {registroId && !registroCompleto?.folio && (
+              <span className="text-oxford-500 font-normal"> (asignado al firmar conformidad)</span>
+            )}
+          </span>
+        </div>
+        <FormularioMoper
+          onGuardar={onGuardar}
+          registroId={registroId}
+        />
+        {registroId && (
+          <>
+            <FirmasWorkflow
+              registroId={registroId}
+              registro={registroCompleto}
+              onFirmaRegistrada={onFirmaRegistrada}
+            />
+            {registroCompleto?.completado && (
+              <div className="mt-6 flex flex-wrap gap-3 justify-end">
+                <button
+                  type="button"
+                  onClick={onGenerarPDF}
+                  className="px-4 py-2 bg-black text-white rounded border-2 border-black font-medium hover:bg-oxford-800"
+                >
+                  Descargar PDF
+                </button>
+                <button
+                  type="button"
+                  onClick={onNuevoRegistro}
+                  className="px-4 py-2 border-2 border-oxford-400 text-oxford-800 rounded font-medium hover:bg-oxford-100"
+                >
+                  Nuevo registro
+                </button>
+              </div>
+            )}
+          </>
+        )}
+        </main>
+      </div>
+      <FooterLegal />
+    </div>
+  )
+}
