@@ -3,12 +3,12 @@ import pg from 'pg'
 const { Pool } = pg
 
 const connectionString = process.env.DATABASE_URL || 'postgresql://localhost:5432/moper'
-const isSupabase = connectionString.includes('supabase')
+const isLocalhost = /localhost|127\.0\.0\.1/.test(connectionString)
 
 const pool = new Pool({
   connectionString,
-  // Supabase requiere SSL en conexiones remotas
-  ...(isSupabase && {
+  // SSL para cualquier Postgres remoto (Supabase, Render, etc.)
+  ...(!isLocalhost && {
     ssl: { rejectUnauthorized: false },
   }),
 })

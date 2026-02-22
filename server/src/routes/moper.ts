@@ -18,23 +18,33 @@ interface MoperBody {
   asignar_folio_ahora?: boolean
 }
 
+/** Normaliza a YYYY-MM-DD para columna DATE (evita error con datetime-local). */
+function toDateOnly(s: string | null | undefined): string | null {
+  if (s == null || typeof s !== 'string') return null
+  const trimmed = s.trim()
+  if (!trimmed) return null
+  const match = trimmed.match(/^(\d{4}-\d{2}-\d{2})/)
+  return match ? match[1] : trimmed
+}
+
 router.post('/', async (req: Request, res: Response) => {
   const body = req.body as MoperBody
   try {
-    await query(
+    const row = await query<{ id: number }>(
       `INSERT INTO moper_registros (
         folio, oficial_id, oficial_nombre, curp, fecha_ingreso, fecha_inicio_efectiva,
         servicio_actual_id, servicio_nuevo_id, puesto_actual_id, puesto_nuevo_id,
         servicio_actual_nombre, servicio_nuevo_nombre, puesto_actual_nombre, puesto_nuevo_nombre,
         sueldo_actual, sueldo_nuevo, motivo
-      ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17)`,
+      ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17)
+      RETURNING id`,
       [
         null,
         null,
         (body.oficial_nombre || '').trim() || null,
         (body.curp || '').trim() || null,
-        body.fecha_ingreso || null,
-        body.fecha_inicio_efectiva || null,
+        toDateOnly(body.fecha_ingreso) || null,
+        toDateOnly(body.fecha_inicio_efectiva) || null,
         null,
         null,
         null,
@@ -48,13 +58,14 @@ router.post('/', async (req: Request, res: Response) => {
         (body.motivo || '').trim() || '',
       ]
     )
-    const row = await query<{ id: number }>(
-      'SELECT id FROM moper_registros ORDER BY id DESC LIMIT 1'
-    )
-    const id = row.rows[0].id
+    const id = row.rows[0]?.id
+    if (id == null) {
+      console.error('INSERT moper_registros sin RETURNING id')
+      return res.status(500).json({ error: 'Error al guardar registro' })
+    }
     res.status(201).json({ id, folio: null })
   } catch (e) {
-    console.error(e)
+    console.error('POST /api/moper error:', e)
     res.status(500).json({ error: 'Error al guardar registro' })
   }
 })
