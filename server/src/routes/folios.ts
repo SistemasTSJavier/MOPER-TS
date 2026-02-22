@@ -1,9 +1,9 @@
-import { Router } from 'express'
+import { Router, Request, Response } from 'express'
 import { getNextFolio, getFolioPreview } from '../db/index.js'
 
 const router = Router()
 
-router.get('/preview', async (_req, res) => {
+router.get('/preview', async (_req: Request, res: Response) => {
   try {
     const folio = await getFolioPreview()
     res.json({ folio })
@@ -12,7 +12,7 @@ router.get('/preview', async (_req, res) => {
   }
 })
 
-router.post('/next', async (_req, res) => {
+router.post('/next', async (_req: Request, res: Response) => {
   try {
     const folio = await getNextFolio()
     res.json({ folio })

@@ -1,9 +1,9 @@
-import { Router } from 'express'
+import { Router, Request, Response } from 'express'
 import { query } from '../db/index.js'
 
 const router = Router()
 
-router.get('/search', async (req, res) => {
+router.get('/search', async (req: Request, res: Response) => {
   const q = (req.query.q as string)?.trim() || ''
   if (!q || q.length < 2) {
     return res.json([])
@@ -15,7 +15,7 @@ router.get('/search', async (req, res) => {
        LIMIT 20`,
       [`%${q}%`]
     )
-    res.json(result.rows.map((r) => ({ ...r, fecha_ingreso: r.fecha_ingreso ? r.fecha_ingreso : null })))
+    res.json(result.rows.map((r: { id: number; nombre: string; curp: string; fecha_ingreso: string }) => ({ ...r, fecha_ingreso: r.fecha_ingreso ? r.fecha_ingreso : null })))
   } catch (e) {
     res.status(500).json({ error: 'Error en búsqueda' })
   }

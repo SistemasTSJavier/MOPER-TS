@@ -1,5 +1,5 @@
 import 'dotenv/config'
-import express from 'express'
+import express, { Request, Response } from 'express'
 import cors from 'cors'
 import path from 'path'
 import { fileURLToPath } from 'url'
@@ -25,11 +25,11 @@ app.use('/api/moper', moperRouter)
 const clientDist = path.join(__dirname, '..', '..', 'client', 'dist')
 if (existsSync(clientDist)) {
   app.use(express.static(clientDist))
-  app.get('*', (_req, res) => {
+  app.get('*', (_req: Request, res: Response) => {
     res.sendFile(path.join(clientDist, 'index.html'))
   })
 } else {
-  app.get('/', (_req, res) => {
+  app.get('/', (_req: Request, res: Response) => {
     res.json({
       message: 'API MOPER',
       endpoints: { health: '/api/health', folios: '/api/folios', moper: '/api/moper' },

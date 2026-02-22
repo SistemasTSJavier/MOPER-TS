@@ -1,4 +1,4 @@
-import { Router } from 'express'
+import { Router, Request, Response } from 'express'
 import { query, getNextFolio } from '../db/index.js'
 
 const router = Router()
@@ -18,7 +18,7 @@ interface MoperBody {
   asignar_folio_ahora?: boolean
 }
 
-router.post('/', async (req, res) => {
+router.post('/', async (req: Request, res: Response) => {
   const body = req.body as MoperBody
   try {
     await query(
@@ -59,7 +59,7 @@ router.post('/', async (req, res) => {
   }
 })
 
-router.get('/', async (_req, res) => {
+router.get('/', async (_req: Request, res: Response) => {
   try {
     const pendientes = await query<{ count: string }>(
       'SELECT COUNT(*) as count FROM moper_registros WHERE completado IS NOT TRUE'
@@ -86,7 +86,7 @@ router.get('/', async (_req, res) => {
   }
 })
 
-router.get('/:id', async (req, res) => {
+router.get('/:id', async (req: Request, res: Response) => {
   try {
     const r = await query(
       `SELECT m.id, m.folio, m.fecha_hora, m.fecha_inicio_efectiva,
@@ -119,7 +119,7 @@ router.get('/:id', async (req, res) => {
   }
 })
 
-router.patch('/:id/firma', async (req, res) => {
+router.patch('/:id/firma', async (req: Request, res: Response) => {
   const { tipo, imagen } = req.body as { tipo: string; imagen?: string }
   const valid = ['conformidad', 'rh', 'gerente', 'control']
   if (!valid.includes(tipo) || !imagen?.startsWith?.('data:image/')) {
