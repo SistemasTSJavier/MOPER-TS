@@ -1,10 +1,11 @@
 import { Router, Request, Response } from 'express'
 import { getNextFolio, getFolioPreview } from '../db/index.js'
 import { pgErrorDetail } from '../utils/pgError.js'
+import { requireAuth } from '../middleware/auth.js'
 
 const router = Router()
 
-router.get('/preview', async (_req: Request, res: Response) => {
+router.get('/preview', requireAuth, async (_req: Request, res: Response) => {
   try {
     const folio = await getFolioPreview()
     res.json({ folio })
@@ -18,7 +19,7 @@ router.get('/preview', async (_req: Request, res: Response) => {
   }
 })
 
-router.post('/next', async (_req: Request, res: Response) => {
+router.post('/next', requireAuth, async (_req: Request, res: Response) => {
   try {
     const folio = await getNextFolio()
     res.json({ folio })

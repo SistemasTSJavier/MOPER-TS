@@ -1,3 +1,13 @@
+-- Usuarios para login (gerente, RH, control). Rol: admin (ve todo y puede crear), gerente (firma gerente), rh (firma RH), control (firma control).
+CREATE TABLE IF NOT EXISTS usuarios (
+  id SERIAL PRIMARY KEY,
+  email VARCHAR(255) NOT NULL UNIQUE,
+  password_hash TEXT NOT NULL,
+  nombre TEXT NOT NULL,
+  rol VARCHAR(20) NOT NULL CHECK (rol IN ('admin', 'gerente', 'rh', 'control')),
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
 -- Folios: secuencial único. Preview muestra (last_number+1): 0280, 0281, 0282...
 -- Al firmar conformidad se asigna getNextFolio() y se incrementa last_number.
 CREATE TABLE IF NOT EXISTS folio_sequence (
@@ -56,6 +66,9 @@ CREATE TABLE IF NOT EXISTS moper_registros (
   sueldo_actual DECIMAL(12,2),
   sueldo_nuevo DECIMAL(12,2),
   motivo TEXT,
+  creado_por TEXT,
+  solicitado_por TEXT,
+  codigo_acceso TEXT UNIQUE,
   -- Firmas (workflow: imagen = firma dibujada en canvas)
   firma_conformidad_at TIMESTAMPTZ,
   firma_conformidad_nombre TEXT,

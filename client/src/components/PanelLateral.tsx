@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { format } from 'date-fns'
 import { es } from 'date-fns/locale'
+import { useAuth } from '../context/AuthContext'
 import { API } from '../api'
 
 export interface ResumenRegistros {
@@ -18,6 +19,7 @@ interface PanelLateralProps {
 }
 
 export function PanelLateral({ registroIdActual, onSeleccionarRegistro, onNuevoRegistro, refreshTrigger = 0 }: PanelLateralProps) {
+  const { authHeaders } = useAuth()
   const [resumen, setResumen] = useState<ResumenRegistros | null>(null)
   const [cargando, setCargando] = useState(true)
   const [errorApi, setErrorApi] = useState<string | null>(null)
@@ -25,7 +27,7 @@ export function PanelLateral({ registroIdActual, onSeleccionarRegistro, onNuevoR
   const cargar = () => {
     setCargando(true)
     setErrorApi(null)
-    fetch(`${API}/api/moper`)
+    fetch(`${API}/api/moper`, { headers: authHeaders() })
       .then((r) => r.json().then((d) => ({ ok: r.ok, data: d })))
       .then(({ ok, data }) => {
         if (ok) setResumen(data)

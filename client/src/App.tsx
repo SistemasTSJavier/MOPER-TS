@@ -4,6 +4,9 @@ import { PanelLateral } from './components/PanelLateral'
 import { FormularioMoper } from './components/FormularioMoper'
 import { FirmasWorkflow } from './components/FirmasWorkflow'
 import { FooterLegal } from './components/FooterLegal'
+import { LoginPanel } from './components/LoginPanel'
+import { VistaPorCodigo } from './components/VistaPorCodigo'
+import { useAuth } from './context/AuthContext'
 import { API } from './api'
 import { generarPDF, loadLogoAsDataUrl } from './utils/pdf'
 
@@ -21,6 +24,9 @@ export interface RegistroMoper {
   servicio_nuevo_nombre?: string
   puesto_actual_nombre?: string
   puesto_nuevo_nombre?: string
+  creado_por?: string | null
+  solicitado_por?: string | null
+  created_at?: string | null
   firma_conformidad_at?: string | null
   firma_conformidad_nombre?: string | null
   firma_conformidad_imagen?: string | null
@@ -34,27 +40,33 @@ export interface RegistroMoper {
   firma_control_nombre?: string | null
   firma_control_imagen?: string | null
   completado?: boolean
+  codigo_acceso?: string | null
 }
 
 export default function App() {
+  const { user, accesoPorCodigo, loading, authHeaders } = useAuth()
   const [folioPreview, setFolioPreview] = useState('SPT/No. 0280/MOP')
   const [registroId, setRegistroId] = useState<number | null>(null)
   const [registroCompleto, setRegistroCompleto] = useState<RegistroMoper | null>(null)
   const [refreshPanel, setRefreshPanel] = useState(0)
 
   useEffect(() => {
-    fetch(`${API}/api/folios/preview`).then((r) => r.json()).then((d) => d.folio && setFolioPreview(d.folio)).catch(() => {})
-  }, [])
+    if (!user) return
+    fetch(`${API}/api/folios/preview`, { headers: authHeaders() })
+      .then((r) => r.json())
+      .then((d) => d.folio && setFolioPreview(d.folio))
+      .catch(() => {})
+  }, [user, authHeaders])
 
   const cargarRegistro = useCallback((id: number) => {
-    fetch(`${API}/api/moper/${id}`)
+    fetch(`${API}/api/moper/${id}`, { headers: authHeaders() })
       .then((r) => r.json())
       .then((r) => {
         setRegistroCompleto(r)
         if (r.folio) setFolioPreview(r.folio)
       })
       .catch(() => setRegistroCompleto(null))
-  }, [])
+  }, [authHeaders])
 
   const onGuardar = useCallback((id: number, folio: string | null) => {
     setRegistroId(id)
@@ -88,6 +100,20 @@ export default function App() {
     actualizarFolioPreview()
   }, [actualizarFolioPreview])
 
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-oxford-50">
+        <p className="text-oxford-600">Cargando...</p>
+      </div>
+    )
+  }
+  if (accesoPorCodigo) {
+    return <VistaPorCodigo />
+  }
+  if (!user) {
+    return <LoginPanel />
+  }
+
   return (
     <div className="min-h-screen flex flex-col bg-white">
       <Header />
@@ -102,18 +128,28 @@ export default function App() {
           <p className="text-center font-bold text-oxford-800 text-base sm:text-lg mb-4 sm:mb-6">
             Movimiento de Personal (MOPER)
           </p>
-          <div className="border-2 border-oxford-300 rounded-lg p-3 sm:p-4 mb-4 bg-oxford-50/30">
-          <span className="text-oxford-600 text-sm font-medium">Folio: </span>
-          <span className="font-mono font-semibold text-black">
-            {registroCompleto?.folio ?? folioPreview}
-            {registroId && !registroCompleto?.folio && (
-              <span className="text-oxford-500 font-normal"> (asignado al firmar conformidad)</span>
-            )}
-          </span>
+          <div className="border-2 border-oxford-300 rounded-lg p-3 sm:p-4 mb-4 bg-oxford-50/30 space-y-2">
+          <div>
+            <span className="text-oxford-600 text-sm font-medium">Folio: </span>
+            <span className="font-mono font-semibold text-black">
+              {registroCompleto?.folio ?? folioPreview}
+              {registroId && !registroCompleto?.folio && (
+                <span className="text-oxford-500 font-normal"> (asignado al firmar conformidad)</span>
+              )}
+            </span>
+          </div>
+          {registroCompleto?.codigo_acceso && (
+            <div className="text-sm">
+              <span className="text-oxford-600 font-medium">Código de acceso para el oficial: </span>
+              <span className="font-mono font-semibold text-black">{registroCompleto.codigo_acceso}</span>
+              <span className="text-oxford-500 ml-1">(compartir con quien firma conformidad)</span>
+            </div>
+          )}
         </div>
         <FormularioMoper
           onGuardar={onGuardar}
           registroId={registroId}
+          registro={registroCompleto}
         />
         {registroId && (
           <>

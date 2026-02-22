@@ -75,7 +75,13 @@ export function generarPDF(registro: RegistroMoper, logoDataUrl?: string | null)
   doc.setFontSize(9)
   const folio = registro.folio || 'SPT/No. ----/MOP'
   doc.text('Folio: ' + folio, margin, y)
-  y += 10
+  y += 5
+  doc.text('Creado por: ' + (registro.creado_por || '-'), margin, y)
+  y += 5
+  doc.text('Fecha de creación: ' + (registro.created_at ? format(new Date(registro.created_at), "d 'de' MMMM yyyy, HH:mm", { locale: es }) : '-'), margin, y)
+  y += 5
+  doc.text('Solicitado por: ' + (registro.solicitado_por || '-'), margin, y)
+  y += 8
 
   doc.setFont('helvetica', 'bold')
   doc.setFontSize(10)

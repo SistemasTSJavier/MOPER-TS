@@ -1,8 +1,35 @@
 import { Router, Request, Response } from 'express'
 import { query, getNextFolio } from '../db/index.js'
 import { pgErrorDetail } from '../utils/pgError.js'
+import { requireAuth } from '../middleware/auth.js'
+import type { AuthRequest } from '../middleware/auth.js'
+import { generarCodigoAcceso } from '../utils/codigoAcceso.js'
 
 const router = Router()
+
+const SELECT_REGISTRO = `
+  SELECT m.id, m.folio, m.fecha_hora, m.fecha_inicio_efectiva, m.created_at, m.codigo_acceso,
+    COALESCE(m.oficial_nombre, o.nombre) as oficial_nombre,
+    COALESCE(m.curp, o.curp) as curp,
+    COALESCE(m.fecha_ingreso::text, o.fecha_ingreso::text) as fecha_ingreso,
+    COALESCE(m.servicio_actual_nombre, sa.nombre) as servicio_actual_nombre,
+    COALESCE(m.servicio_nuevo_nombre, sn.nombre) as servicio_nuevo_nombre,
+    COALESCE(m.puesto_actual_nombre, pa.nombre) as puesto_actual_nombre,
+    COALESCE(m.puesto_nuevo_nombre, pn.nombre) as puesto_nuevo_nombre,
+    m.sueldo_actual, m.sueldo_nuevo, m.motivo,
+    m.creado_por, m.solicitado_por,
+    m.firma_conformidad_at, m.firma_conformidad_nombre, m.firma_conformidad_imagen,
+    m.firma_rh_at, m.firma_rh_nombre, m.firma_rh_imagen,
+    m.firma_gerente_at, m.firma_gerente_nombre, m.firma_gerente_imagen,
+    m.firma_control_at, m.firma_control_nombre, m.firma_control_imagen,
+    m.completado
+  FROM moper_registros m
+  LEFT JOIN oficiales o ON o.id = m.oficial_id
+  LEFT JOIN servicios sa ON sa.id = m.servicio_actual_id
+  LEFT JOIN servicios sn ON sn.id = m.servicio_nuevo_id
+  LEFT JOIN puestos pa ON pa.id = m.puesto_actual_id
+  LEFT JOIN puestos pn ON pn.id = m.puesto_nuevo_id
+`
 
 interface MoperBody {
   oficial_nombre: string
@@ -16,6 +43,8 @@ interface MoperBody {
   sueldo_actual: number | null
   sueldo_nuevo: number
   motivo: string
+  creado_por?: string
+  solicitado_por?: string
   asignar_folio_ahora?: boolean
 }
 
@@ -28,20 +57,27 @@ function toDateOnly(s: string | null | undefined): string | null {
   return match ? match[1] : null
 }
 
-router.post('/', async (req: Request, res: Response) => {
+router.post('/', requireAuth, async (req: AuthRequest, res: Response) => {
   const body = req.body as MoperBody | undefined
   if (!body || typeof body !== 'object') {
     return res.status(400).json({ error: 'Cuerpo de la petición inválido (JSON esperado)' })
   }
+  const puedeCrear = req.user?.rol === 'admin' || req.user?.rol === 'gerente'
+  if (!puedeCrear) {
+    return res.status(403).json({ error: 'Sin permiso para crear registros' })
+  }
   const curpVal = (body.curp || '').trim().slice(0, 18) || null
   try {
+    const creadoPor = (body.creado_por || '').trim() || null
+    const solicitadoPor = (body.solicitado_por || '').trim() || null
+    const codigoAcceso = generarCodigoAcceso()
     const row = await query<{ id: number }>(
       `INSERT INTO moper_registros (
         folio, oficial_id, oficial_nombre, curp, fecha_ingreso, fecha_inicio_efectiva,
         servicio_actual_id, servicio_nuevo_id, puesto_actual_id, puesto_nuevo_id,
         servicio_actual_nombre, servicio_nuevo_nombre, puesto_actual_nombre, puesto_nuevo_nombre,
-        sueldo_actual, sueldo_nuevo, motivo
-      ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17)
+        sueldo_actual, sueldo_nuevo, motivo, creado_por, solicitado_por, codigo_acceso
+      ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20)
       RETURNING id`,
       [
         null,
@@ -61,6 +97,9 @@ router.post('/', async (req: Request, res: Response) => {
         body.sueldo_actual ?? null,
         body.sueldo_nuevo ?? 0,
         (body.motivo || '').trim() || '',
+        creadoPor,
+        solicitadoPor,
+        codigoAcceso,
       ]
     )
     const id = row.rows[0]?.id
@@ -68,7 +107,7 @@ router.post('/', async (req: Request, res: Response) => {
       console.error('INSERT moper_registros sin RETURNING id')
       return res.status(500).json({ error: 'Error al guardar registro' })
     }
-    res.status(201).json({ id, folio: null })
+    res.status(201).json({ id, folio: null, codigo_acceso: codigoAcceso })
   } catch (e) {
     const detail = pgErrorDetail(e)
     console.error('POST /api/moper error:', e)
@@ -79,7 +118,20 @@ router.post('/', async (req: Request, res: Response) => {
   }
 })
 
-router.get('/', async (_req: Request, res: Response) => {
+/** Acceso público por código: devuelve el registro para mostrar resumen y permitir firma de conformidad. */
+router.get('/codigo/:codigo', async (req: Request, res: Response) => {
+  const codigo = (req.params.codigo || '').trim()
+  if (!codigo) return res.status(400).json({ error: 'Código requerido' })
+  try {
+    const r = await query(SELECT_REGISTRO + ' WHERE m.codigo_acceso = $1', [codigo])
+    if (r.rows.length === 0) return res.status(404).json({ error: 'Código no válido' })
+    res.json(r.rows[0])
+  } catch (e) {
+    res.status(500).json({ error: 'Error al obtener registro' })
+  }
+})
+
+router.get('/', requireAuth, async (_req: Request, res: Response) => {
   try {
     const pendientes = await query<{ count: string }>(
       'SELECT COUNT(*) as count FROM moper_registros WHERE completado IS NOT TRUE'
@@ -111,32 +163,9 @@ router.get('/', async (_req: Request, res: Response) => {
   }
 })
 
-router.get('/:id', async (req: Request, res: Response) => {
+router.get('/:id', requireAuth, async (req: Request, res: Response) => {
   try {
-    const r = await query(
-      `SELECT m.id, m.folio, m.fecha_hora, m.fecha_inicio_efectiva,
-        COALESCE(m.oficial_nombre, o.nombre) as oficial_nombre,
-        COALESCE(m.curp, o.curp) as curp,
-        COALESCE(m.fecha_ingreso::text, o.fecha_ingreso::text) as fecha_ingreso,
-        COALESCE(m.servicio_actual_nombre, sa.nombre) as servicio_actual_nombre,
-        COALESCE(m.servicio_nuevo_nombre, sn.nombre) as servicio_nuevo_nombre,
-        COALESCE(m.puesto_actual_nombre, pa.nombre) as puesto_actual_nombre,
-        COALESCE(m.puesto_nuevo_nombre, pn.nombre) as puesto_nuevo_nombre,
-        m.sueldo_actual, m.sueldo_nuevo, m.motivo,
-        m.firma_conformidad_at, m.firma_conformidad_nombre, m.firma_conformidad_imagen,
-        m.firma_rh_at, m.firma_rh_nombre, m.firma_rh_imagen,
-        m.firma_gerente_at, m.firma_gerente_nombre, m.firma_gerente_imagen,
-        m.firma_control_at, m.firma_control_nombre, m.firma_control_imagen,
-        m.completado
-       FROM moper_registros m
-       LEFT JOIN oficiales o ON o.id = m.oficial_id
-       LEFT JOIN servicios sa ON sa.id = m.servicio_actual_id
-       LEFT JOIN servicios sn ON sn.id = m.servicio_nuevo_id
-       LEFT JOIN puestos pa ON pa.id = m.puesto_actual_id
-       LEFT JOIN puestos pn ON pn.id = m.puesto_nuevo_id
-       WHERE m.id = $1`,
-      [req.params.id]
-    )
+    const r = await query(SELECT_REGISTRO + ' WHERE m.id = $1', [req.params.id])
     if (r.rows.length === 0) return res.status(404).json({ error: 'No encontrado' })
     res.json(r.rows[0])
   } catch (e) {
@@ -144,23 +173,40 @@ router.get('/:id', async (req: Request, res: Response) => {
   }
 })
 
-router.patch('/:id/firma', async (req: Request, res: Response) => {
-  const { tipo, imagen } = req.body as { tipo: string; imagen?: string }
+router.patch('/:id/firma', async (req: AuthRequest, res: Response) => {
+  const { tipo, imagen, codigo_acceso } = req.body as { tipo: string; imagen?: string; codigo_acceso?: string }
   const valid = ['conformidad', 'rh', 'gerente', 'control']
   if (!valid.includes(tipo) || !imagen?.startsWith?.('data:image/')) {
     return res.status(400).json({ error: 'tipo e imagen (data URL) requeridos' })
   }
+  const id = req.params.id
+  const current = await query<{ folio: string | null; firma_conformidad_at: string | null; codigo_acceso: string | null }>(
+    'SELECT folio, firma_conformidad_at, codigo_acceso FROM moper_registros WHERE id = $1',
+    [id]
+  )
+  const row = current.rows[0]
+  if (!row) return res.status(404).json({ error: 'Registro no encontrado' })
+
+  let nombreFirma = 'Firma manuscrita'
+  if (tipo === 'conformidad') {
+    const codigoRecibido = (codigo_acceso ?? '').trim()
+    const codigoRegistro = row.codigo_acceso?.trim()
+    if (!codigoRegistro || codigoRecibido !== codigoRegistro) {
+      return res.status(401).json({ error: 'Código de acceso incorrecto' })
+    }
+  } else {
+    if (!req.user) return res.status(401).json({ error: 'Debe iniciar sesión para esta firma' })
+    const rolFirma: Record<string, string[]> = { rh: ['rh', 'admin'], gerente: ['gerente', 'admin'], control: ['control', 'admin'] }
+    const rolesOk = rolFirma[tipo]
+    if (!rolesOk?.includes(req.user.rol)) {
+      return res.status(403).json({ error: 'Su cuenta no está vinculada a esta firma' })
+    }
+    nombreFirma = req.user.nombre
+  }
   const col = `firma_${tipo === 'conformidad' ? 'conformidad' : tipo === 'rh' ? 'rh' : tipo === 'gerente' ? 'gerente' : 'control'}_at`
   const colNombre = col.replace('_at', '_nombre')
   const colImagen = col.replace('_at', '_imagen')
-  const nombreFirma = 'Firma manuscrita'
   try {
-    const id = req.params.id
-    const current = await query<{ folio: string | null; firma_conformidad_at: string | null }>(
-      'SELECT folio, firma_conformidad_at FROM moper_registros WHERE id = $1',
-      [id]
-    )
-    const row = current.rows[0]
     if (tipo === 'conformidad' && !row.firma_conformidad_at && row.folio == null) {
       const folio = await getNextFolio()
       await query(

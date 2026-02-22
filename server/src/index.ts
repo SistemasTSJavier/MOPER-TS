@@ -1,6 +1,6 @@
 import 'dotenv/config'
 import dns from 'dns'
-// Evita ENETUNREACH en Render: forzar IPv4 al resolver el host de la BD (Supabase, etc.)
+// Forzar IPv4 al conectar a la BD (compatible con pooler de Supabase desde Render)
 dns.setDefaultResultOrder('ipv4first')
 
 import express, { Request, Response } from 'express'
@@ -8,11 +8,13 @@ import cors from 'cors'
 import path from 'path'
 import { fileURLToPath } from 'url'
 import { existsSync } from 'fs'
-import { ensureTextColumns } from './db/index.js'
+import { initPool, ensureTextColumns, ensureUsuariosTable, query } from './db/index.js'
 import foliosRouter from './routes/folios.js'
 import catalogosRouter from './routes/catalogos.js'
 import moperRouter from './routes/moper.js'
+import authRouter from './routes/auth.js'
 import healthRouter from './routes/health.js'
+import bcrypt from 'bcrypt'
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 
@@ -21,6 +23,7 @@ app.use(cors())
 app.use(express.json())
 
 app.use('/api/health', healthRouter)
+app.use('/api/auth', authRouter)
 app.use('/api/folios', foliosRouter)
 app.use('/api/catalogos', catalogosRouter)
 app.use('/api/moper', moperRouter)
@@ -42,11 +45,29 @@ if (existsSync(clientDist)) {
 }
 
 const PORT = process.env.PORT || 3000
-app.listen(PORT, async () => {
+;(async () => {
   try {
+    await initPool()
     await ensureTextColumns()
+    await ensureUsuariosTable()
+    const adminEmail = process.env.ADMIN_EMAIL?.trim()
+    const adminPassword = process.env.ADMIN_PASSWORD
+    if (adminEmail && adminPassword) {
+      const r = await query<{ count: string }>('SELECT COUNT(*) as count FROM usuarios')
+      const count = parseInt(r.rows[0]?.count ?? '0', 10)
+      if (count === 0) {
+        const hash = await bcrypt.hash(adminPassword, 10)
+        await query(
+          'INSERT INTO usuarios (email, password_hash, nombre, rol) VALUES ($1, $2, $3, $4)',
+          [adminEmail.toLowerCase(), hash, 'Administrador', 'admin']
+        )
+        console.log('[Auth] Usuario admin creado:', adminEmail)
+      }
+    }
   } catch (e) {
-    console.warn('Migración columnas texto:', e)
+    console.warn('Migración / seed:', e)
   }
-  console.log(`Server MOPER en http://localhost:${PORT}`)
-})
+  app.listen(PORT, () => {
+    console.log(`Server MOPER en http://localhost:${PORT}`)
+  })
+})()

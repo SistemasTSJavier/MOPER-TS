@@ -1,10 +1,14 @@
 import { useState, useCallback, useEffect } from 'react'
-
+import { format } from 'date-fns'
+import { es } from 'date-fns/locale'
+import { useAuth } from '../context/AuthContext'
 import { API } from '../api'
+import type { RegistroMoper } from '../App'
 
 interface FormularioMoperProps {
   onGuardar: (id: number, folio: string | null) => void
   registroId: number | null
+  registro: RegistroMoper | null
 }
 
 /** Fecha y hora local en formato para input datetime-local (yyyy-MM-ddTHH:mm) */
@@ -14,7 +18,8 @@ function fechaHoraLocal(): string {
   return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`
 }
 
-export function FormularioMoper({ onGuardar, registroId }: FormularioMoperProps) {
+export function FormularioMoper({ onGuardar, registroId, registro }: FormularioMoperProps) {
+  const { authHeaders } = useAuth()
   const [nombreOficial, setNombreOficial] = useState('')
   const [curp, setCurp] = useState('')
   const [fechaHora, setFechaHora] = useState(() => fechaHoraLocal())
@@ -27,6 +32,8 @@ export function FormularioMoper({ onGuardar, registroId }: FormularioMoperProps)
   const [sueldoActual, setSueldoActual] = useState<string>('')
   const [sueldoNuevo, setSueldoNuevo] = useState<string>('')
   const [motivo, setMotivo] = useState('')
+  const [creadoPor, setCreadoPor] = useState('')
+  const [solicitadoPor, setSolicitadoPor] = useState('')
   const [guardando, setGuardando] = useState(false)
   const [error, setError] = useState('')
 
@@ -48,6 +55,8 @@ export function FormularioMoper({ onGuardar, registroId }: FormularioMoperProps)
     sueldo_actual: sueldoActual ? Number(sueldoActual) : null,
     sueldo_nuevo: Number(sueldoNuevo) || 0,
     motivo: motivo.trim(),
+    creado_por: creadoPor.trim() || undefined,
+    solicitado_por: solicitadoPor.trim() || undefined,
   }
 
   const guardar = async () => {
@@ -68,7 +77,7 @@ export function FormularioMoper({ onGuardar, registroId }: FormularioMoperProps)
     try {
       const res = await fetch(`${API}/api/moper`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', ...authHeaders() },
         body: JSON.stringify(payload),
       })
       const data = await res.json()
@@ -89,7 +98,49 @@ export function FormularioMoper({ onGuardar, registroId }: FormularioMoperProps)
       {/* Sección A: Datos Generales */}
       <section className="border-2 border-oxford-300 rounded-lg p-3 sm:p-4 bg-white">
         <h2 className="text-sm sm:text-base font-bold text-black border-b border-oxford-300 pb-2 mb-3 sm:mb-4">A. Datos Generales</h2>
+        {(registro?.creado_por != null || registro?.solicitado_por != null || registro?.created_at) && (
+          <div className="grid gap-3 sm:grid-cols-3 mb-4 p-3 bg-oxford-50 rounded border border-oxford-200">
+            <div>
+              <span className="text-xs font-medium text-oxford-600">Creado por:</span>
+              <p className="text-sm text-black">{registro?.creado_por || '-'}</p>
+            </div>
+            <div>
+              <span className="text-xs font-medium text-oxford-600">Fecha de creación:</span>
+              <p className="text-sm text-black">
+                {registro?.created_at ? format(new Date(registro.created_at), "d 'de' MMMM yyyy, HH:mm", { locale: es }) : '-'}
+              </p>
+            </div>
+            <div>
+              <span className="text-xs font-medium text-oxford-600">Solicitado por:</span>
+              <p className="text-sm text-black">{registro?.solicitado_por || '-'}</p>
+            </div>
+          </div>
+        )}
         <div className="grid gap-4 sm:grid-cols-2">
+          {!registro && (
+            <>
+              <div>
+                <label className="block text-sm font-medium text-oxford-800 mb-1">Creado por</label>
+                <input
+                  type="text"
+                  value={creadoPor}
+                  onChange={(e) => setCreadoPor(e.target.value)}
+                  placeholder="Nombre de quien crea el registro"
+                  className="w-full border-2 border-oxford-300 rounded px-3 py-2 bg-white text-black placeholder-oxford-400"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-oxford-800 mb-1">Solicitado por</label>
+                <input
+                  type="text"
+                  value={solicitadoPor}
+                  onChange={(e) => setSolicitadoPor(e.target.value)}
+                  placeholder="Nombre de quien solicita"
+                  className="w-full border-2 border-oxford-300 rounded px-3 py-2 bg-white text-black placeholder-oxford-400"
+                />
+              </div>
+            </>
+          )}
           <div className="sm:col-span-2">
             <label className="block text-sm font-medium text-oxford-800 mb-1">Nombre del Oficial</label>
             <input
