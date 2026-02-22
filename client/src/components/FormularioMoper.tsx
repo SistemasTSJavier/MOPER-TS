@@ -72,7 +72,10 @@ export function FormularioMoper({ onGuardar, registroId }: FormularioMoperProps)
         body: JSON.stringify(payload),
       })
       const data = await res.json()
-      if (!res.ok) throw new Error(data.error || 'Error al guardar')
+      if (!res.ok) {
+        const msg = data.detail ? `${data.error || 'Error al guardar'}: ${data.detail}` : (data.error || 'Error al guardar')
+        throw new Error(msg)
+      }
       onGuardar(data.id, data.folio ?? null)
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Error al guardar')

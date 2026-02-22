@@ -24,11 +24,29 @@ function toDateOnly(s: string | null | undefined): string | null {
   const trimmed = s.trim()
   if (!trimmed) return null
   const match = trimmed.match(/^(\d{4}-\d{2}-\d{2})/)
-  return match ? match[1] : trimmed
+  return match ? match[1] : null
+}
+
+/** Mensaje seguro para el cliente según código de error PostgreSQL. */
+function pgErrorDetail(err: unknown): string | undefined {
+  const e = err as { code?: string; message?: string }
+  if (e?.code === '22P02') return 'Formato de fecha o número inválido.'
+  if (e?.code === '23502') return 'Falta un dato requerido.'
+  if (e?.code === '23505') return 'Registro duplicado.'
+  if (e?.code === '22001') return 'Algún texto excede el límite (ej. CURP 18 caracteres).'
+  if (e?.code === '28P01' || e?.code === '3D000') return 'Error de conexión a la base de datos.'
+  if (e?.code === '42703') return 'Base de datos desactualizada (falta columna). Ejecutar migraciones.'
+  if (e?.code === '42P01') return 'Tabla no existe. Ejecutar schema/migraciones en la base de datos.'
+  if (e?.message) return e.message
+  return undefined
 }
 
 router.post('/', async (req: Request, res: Response) => {
-  const body = req.body as MoperBody
+  const body = req.body as MoperBody | undefined
+  if (!body || typeof body !== 'object') {
+    return res.status(400).json({ error: 'Cuerpo de la petición inválido (JSON esperado)' })
+  }
+  const curpVal = (body.curp || '').trim().slice(0, 18) || null
   try {
     const row = await query<{ id: number }>(
       `INSERT INTO moper_registros (
@@ -42,7 +60,7 @@ router.post('/', async (req: Request, res: Response) => {
         null,
         null,
         (body.oficial_nombre || '').trim() || null,
-        (body.curp || '').trim() || null,
+        curpVal,
         toDateOnly(body.fecha_ingreso) || null,
         toDateOnly(body.fecha_inicio_efectiva) || null,
         null,
@@ -65,8 +83,12 @@ router.post('/', async (req: Request, res: Response) => {
     }
     res.status(201).json({ id, folio: null })
   } catch (e) {
+    const detail = pgErrorDetail(e)
     console.error('POST /api/moper error:', e)
-    res.status(500).json({ error: 'Error al guardar registro' })
+    res.status(500).json({
+      error: 'Error al guardar registro',
+      ...(detail && { detail }),
+    })
   }
 })
 
