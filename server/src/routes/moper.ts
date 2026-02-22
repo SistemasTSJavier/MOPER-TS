@@ -71,6 +71,7 @@ router.post('/', requireAuth, async (req: AuthRequest, res: Response) => {
     const creadoPor = (body.creado_por || '').trim() || null
     const solicitadoPor = (body.solicitado_por || '').trim() || null
     const codigoAcceso = generarCodigoAcceso()
+    const folio = await getNextFolio()
     const row = await query<{ id: number }>(
       `INSERT INTO moper_registros (
         folio, oficial_id, oficial_nombre, curp, fecha_ingreso, fecha_inicio_efectiva,
@@ -80,7 +81,7 @@ router.post('/', requireAuth, async (req: AuthRequest, res: Response) => {
       ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20)
       RETURNING id`,
       [
-        null,
+        folio,
         null,
         (body.oficial_nombre || '').trim() || null,
         curpVal,
@@ -107,7 +108,7 @@ router.post('/', requireAuth, async (req: AuthRequest, res: Response) => {
       console.error('INSERT moper_registros sin RETURNING id')
       return res.status(500).json({ error: 'Error al guardar registro' })
     }
-    res.status(201).json({ id, folio: null, codigo_acceso: codigoAcceso })
+    res.status(201).json({ id, folio, codigo_acceso: codigoAcceso })
   } catch (e) {
     const detail = pgErrorDetail(e)
     console.error('POST /api/moper error:', e)
@@ -208,10 +209,10 @@ router.patch('/:id/firma', async (req: AuthRequest, res: Response) => {
   const colImagen = col.replace('_at', '_imagen')
   try {
     if (tipo === 'conformidad' && !row.firma_conformidad_at && row.folio == null) {
-      const folio = await getNextFolio()
+      const folioAsignar = await getNextFolio()
       await query(
         `UPDATE moper_registros SET folio = $1, ${col} = NOW(), ${colNombre} = $2, ${colImagen} = $3, updated_at = NOW() WHERE id = $4`,
-        [folio, nombreFirma, imagen, id]
+        [folioAsignar, nombreFirma, imagen, id]
       )
     } else {
       await query(

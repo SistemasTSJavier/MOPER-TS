@@ -100,6 +100,23 @@ export default function App() {
     actualizarFolioPreview()
   }, [actualizarFolioPreview])
 
+  const mailtoHref = useCallback((registro: RegistroMoper) => {
+    const subject = `MOPER - ${registro.folio || 'Movimiento de Personal'}`
+    const line = (label: string, value: string | number | null | undefined) =>
+      value != null && String(value).trim() !== '' ? `${label}: ${String(value).trim()}` : null
+    const lines = [
+      line('Folio', registro.folio),
+      line('Oficial', registro.oficial_nombre),
+      line('CURP', registro.curp),
+      line('Servicio actual → nuevo', registro.servicio_actual_nombre && registro.servicio_nuevo_nombre ? `${registro.servicio_actual_nombre} → ${registro.servicio_nuevo_nombre}` : null),
+      line('Puesto actual → nuevo', registro.puesto_actual_nombre && registro.puesto_nuevo_nombre ? `${registro.puesto_actual_nombre} → ${registro.puesto_nuevo_nombre}` : null),
+      line('Motivo', registro.motivo),
+      registro.codigo_acceso ? `\nCódigo de acceso para firma del oficial: ${registro.codigo_acceso}` : null,
+    ].filter(Boolean)
+    const body = lines.join('\r\n')
+    return `mailto:?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`
+  }, [])
+
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-oxford-50">
@@ -158,22 +175,32 @@ export default function App() {
               registro={registroCompleto}
               onFirmaRegistrada={onFirmaRegistrada}
             />
-            {registroCompleto?.completado && (
+            {registroId && registroCompleto && (
               <div className="mt-6 flex flex-wrap gap-3 justify-end">
-                <button
-                  type="button"
-                  onClick={onGenerarPDF}
-                  className="px-4 py-3 min-h-[44px] bg-black text-white rounded border-2 border-black font-medium hover:bg-oxford-800 touch-manipulation"
+                <a
+                  href={mailtoHref(registroCompleto)}
+                  className="px-4 py-3 min-h-[44px] border-2 border-oxford-400 text-oxford-800 rounded font-medium hover:bg-oxford-100 touch-manipulation inline-flex items-center justify-center"
                 >
-                  Descargar PDF
-                </button>
-                <button
-                  type="button"
-                  onClick={onNuevoRegistro}
-                  className="px-4 py-3 min-h-[44px] border-2 border-oxford-400 text-oxford-800 rounded font-medium hover:bg-oxford-100 touch-manipulation"
-                >
-                  Nuevo registro
-                </button>
+                  Enviar por correo
+                </a>
+                {registroCompleto.completado && (
+                  <>
+                    <button
+                      type="button"
+                      onClick={onGenerarPDF}
+                      className="px-4 py-3 min-h-[44px] bg-black text-white rounded border-2 border-black font-medium hover:bg-oxford-800 touch-manipulation"
+                    >
+                      Descargar PDF
+                    </button>
+                    <button
+                      type="button"
+                      onClick={onNuevoRegistro}
+                      className="px-4 py-3 min-h-[44px] border-2 border-oxford-400 text-oxford-800 rounded font-medium hover:bg-oxford-100 touch-manipulation"
+                    >
+                      Nuevo registro
+                    </button>
+                  </>
+                )}
               </div>
             )}
           </>
