@@ -4,7 +4,7 @@ export function Header() {
       <div className="max-w-4xl mx-auto px-3 sm:px-4 py-3 sm:py-4 flex flex-wrap items-center justify-center sm:justify-between gap-2 sm:gap-4">
         <span className="text-base sm:text-xl font-bold text-black tracking-wide order-1 sm:order-1">TACTICAL</span>
         <img
-          src="/logo.png"
+          src="/image.png"
           alt="Logo Tactical Support"
           className="h-8 sm:h-12 w-auto object-contain order-2 sm:order-2"
           onError={(e) => {

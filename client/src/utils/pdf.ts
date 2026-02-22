@@ -25,20 +25,21 @@ const A4_H_MM = 297
 
 const LOGO_HEADER_H_MM = 10
 
-/** Carga /logo.png y lo devuelve como data URL para el PDF (o null si falla). */
+/** Carga la imagen del logo y la devuelve como data URL para el PDF (prueba image.png y logo.png). */
 export function loadLogoAsDataUrl(): Promise<string | null> {
-  return fetch('/logo.png')
-    .then((r) => (r.ok ? r.blob() : Promise.reject(new Error('Logo no encontrado'))))
-    .then(
-      (blob) =>
-        new Promise<string | null>((resolve) => {
-          const reader = new FileReader()
-          reader.onloadend = () => resolve(reader.result as string)
-          reader.onerror = () => resolve(null)
-          reader.readAsDataURL(blob)
-        })
-    )
-    .catch(() => null)
+  const tryLoad = (url: string) =>
+    fetch(url)
+      .then((r) => (r.ok ? r.blob() : Promise.reject()))
+      .then(
+        (blob) =>
+          new Promise<string | null>((resolve) => {
+            const reader = new FileReader()
+            reader.onloadend = () => resolve(reader.result as string)
+            reader.onerror = () => resolve(null)
+            reader.readAsDataURL(blob)
+          })
+      )
+  return tryLoad('/image.png').catch(() => tryLoad('/logo.png').catch(() => null))
 }
 
 export function generarPDF(registro: RegistroMoper, logoDataUrl?: string | null) {
