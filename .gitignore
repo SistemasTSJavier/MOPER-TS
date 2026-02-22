@@ -20,3 +20,4 @@ Thumbs.db
 
 # Vite
 client/node_modules/.vite/
+client/tsconfig.tsbuildinfo
