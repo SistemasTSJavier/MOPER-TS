@@ -4,7 +4,6 @@ import { es } from 'date-fns/locale'
 import { useAuth } from '../context/AuthContext'
 import { FirmasWorkflow } from './FirmasWorkflow'
 import { API } from '../api'
-import type { RegistroMoperResumen } from '../context/AuthContext'
 
 export function VistaPorCodigo() {
   const { accesoPorCodigo, clearCodigoAcceso, setRegistroPorCodigo } = useAuth()
