@@ -1,4 +1,8 @@
 import 'dotenv/config'
+import dns from 'dns'
+// Evita ENETUNREACH en Render: forzar IPv4 al resolver el host de la BD (Supabase, etc.)
+dns.setDefaultResultOrder('ipv4first')
+
 import express, { Request, Response } from 'express'
 import cors from 'cors'
 import path from 'path'
