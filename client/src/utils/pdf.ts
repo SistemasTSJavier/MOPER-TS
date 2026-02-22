@@ -20,9 +20,12 @@ const FOOTER_LEGAL = [
   'No. de Registro Estatal NL: DCSESP/57-16/II  No. de Registro Estatal Coah. CES/ESP/331/14',
 ]
 
+const A4_W_MM = 210
+const A4_H_MM = 297
+
 export function generarPDF(registro: RegistroMoper) {
   const doc = new jsPDF({ unit: 'mm', format: 'a4' })
-  const pageW = doc.getPageWidth(1)
+  const pageW = A4_W_MM
   const margin = 18
   let y = 18
 
@@ -123,7 +126,7 @@ export function generarPDF(registro: RegistroMoper) {
   if (firmas.length % 2 === 1) y += 20
   y += 6
 
-  const footerY = doc.getPageHeight(1) - 18
+  const footerY = A4_H_MM - 18
   doc.setFont('helvetica', 'normal')
   doc.setFontSize(7)
   FOOTER_LEGAL.forEach((line, i) => {
