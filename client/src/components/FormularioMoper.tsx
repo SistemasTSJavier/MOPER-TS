@@ -82,10 +82,10 @@ export function FormularioMoper({ onGuardar, registroId }: FormularioMoperProps)
   }
 
   return (
-    <div id="formulario-moper" className="space-y-6">
+    <div id="formulario-moper" className="space-y-4 sm:space-y-6">
       {/* Sección A: Datos Generales */}
-      <section className="border-2 border-oxford-300 rounded-lg p-4 bg-white">
-        <h2 className="text-base font-bold text-black border-b border-oxford-300 pb-2 mb-4">A. Datos Generales</h2>
+      <section className="border-2 border-oxford-300 rounded-lg p-3 sm:p-4 bg-white">
+        <h2 className="text-sm sm:text-base font-bold text-black border-b border-oxford-300 pb-2 mb-3 sm:mb-4">A. Datos Generales</h2>
         <div className="grid gap-4 sm:grid-cols-2">
           <div className="sm:col-span-2">
             <label className="block text-sm font-medium text-oxford-800 mb-1">Nombre del Oficial</label>
@@ -138,7 +138,7 @@ export function FormularioMoper({ onGuardar, registroId }: FormularioMoperProps)
       </section>
 
       {/* Sección B: Comparativa */}
-      <section className="border-2 border-oxford-300 rounded-lg p-4 bg-white">
+      <section className="border-2 border-oxford-300 rounded-lg p-3 sm:p-4 bg-white">
         <h2 className="text-base font-bold text-black border-b border-oxford-300 pb-2 mb-4">B. Comparativa de Movimiento</h2>
         <div className="overflow-x-auto">
           <table className="w-full border-collapse text-sm">
@@ -241,7 +241,7 @@ export function FormularioMoper({ onGuardar, registroId }: FormularioMoperProps)
           type="button"
           onClick={guardar}
           disabled={guardando}
-          className="w-full sm:w-auto px-6 py-2 bg-black text-white rounded border-2 border-black font-medium hover:bg-oxford-800 disabled:opacity-50"
+          className="w-full sm:w-auto px-6 py-3 min-h-[44px] bg-black text-white rounded border-2 border-black font-medium hover:bg-oxford-800 disabled:opacity-50 touch-manipulation"
         >
           {guardando ? 'Guardando...' : 'Guardar registro'}
         </button>

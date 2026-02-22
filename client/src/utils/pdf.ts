@@ -23,7 +23,25 @@ const FOOTER_LEGAL = [
 const A4_W_MM = 210
 const A4_H_MM = 297
 
-export function generarPDF(registro: RegistroMoper) {
+const LOGO_HEADER_H_MM = 10
+
+/** Carga /logo.png y lo devuelve como data URL para el PDF (o null si falla). */
+export function loadLogoAsDataUrl(): Promise<string | null> {
+  return fetch('/logo.png')
+    .then((r) => (r.ok ? r.blob() : Promise.reject(new Error('Logo no encontrado'))))
+    .then(
+      (blob) =>
+        new Promise<string | null>((resolve) => {
+          const reader = new FileReader()
+          reader.onloadend = () => resolve(reader.result as string)
+          reader.onerror = () => resolve(null)
+          reader.readAsDataURL(blob)
+        })
+    )
+    .catch(() => null)
+}
+
+export function generarPDF(registro: RegistroMoper, logoDataUrl?: string | null) {
   const doc = new jsPDF({ unit: 'mm', format: 'a4' })
   const pageW = A4_W_MM
   const margin = 18
@@ -33,10 +51,19 @@ export function generarPDF(registro: RegistroMoper) {
   doc.setFontSize(14)
   doc.text('TACTICAL', margin, y)
   doc.text('SUPPORT', pageW - margin - doc.getTextWidth('SUPPORT'), y)
-  doc.setFontSize(10)
-  const logoText = '[Logo]'
-  doc.text(logoText, pageW / 2 - doc.getTextWidth(logoText) / 2, y)
-  y += 10
+  if (logoDataUrl && logoDataUrl.startsWith('data:image/')) {
+    try {
+      const logoW = 25
+      doc.addImage(logoDataUrl, 'PNG', pageW / 2 - logoW / 2, y - 2, logoW, LOGO_HEADER_H_MM)
+    } catch {
+      doc.setFontSize(10)
+      doc.text('[Logo]', pageW / 2 - doc.getTextWidth('[Logo]') / 2, y)
+    }
+  } else {
+    doc.setFontSize(10)
+    doc.text('[Logo]', pageW / 2 - doc.getTextWidth('[Logo]') / 2, y)
+  }
+  y += LOGO_HEADER_H_MM + 2
 
   doc.setFont('helvetica', 'bold')
   doc.setFontSize(11)

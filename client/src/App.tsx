@@ -4,7 +4,7 @@ import { PanelLateral } from './components/PanelLateral'
 import { FormularioMoper } from './components/FormularioMoper'
 import { FirmasWorkflow } from './components/FirmasWorkflow'
 import { FooterLegal } from './components/FooterLegal'
-import { generarPDF } from './utils/pdf'
+import { generarPDF, loadLogoAsDataUrl } from './utils/pdf'
 
 const API = '/api'
 
@@ -75,7 +75,8 @@ export default function App() {
   }, [cargarRegistro])
 
   const onGenerarPDF = useCallback(() => {
-    if (registroCompleto) generarPDF(registroCompleto)
+    if (!registroCompleto) return
+    loadLogoAsDataUrl().then((logo) => generarPDF(registroCompleto, logo))
   }, [registroCompleto])
 
   const actualizarFolioPreview = useCallback(() => {
@@ -94,18 +95,18 @@ export default function App() {
   return (
     <div className="min-h-screen flex flex-col bg-white">
       <Header />
-      <div className="flex-1 flex min-h-0">
+      <div className="flex-1 flex flex-col md:flex-row min-h-0">
         <PanelLateral
           registroIdActual={registroId}
           onSeleccionarRegistro={onSeleccionarRegistro}
           onNuevoRegistro={onNuevoRegistro}
           refreshTrigger={refreshPanel}
         />
-        <main className="flex-1 min-w-0 max-w-4xl mx-auto w-full px-4 py-6 overflow-auto">
-          <p className="text-center font-bold text-oxford-800 text-lg mb-6">
+        <main className="flex-1 min-w-0 max-w-4xl mx-auto w-full px-3 sm:px-4 py-4 sm:py-6 overflow-auto">
+          <p className="text-center font-bold text-oxford-800 text-base sm:text-lg mb-4 sm:mb-6">
             Movimiento de Personal (MOPER)
           </p>
-          <div className="border-2 border-oxford-300 rounded-lg p-4 mb-4 bg-oxford-50/30">
+          <div className="border-2 border-oxford-300 rounded-lg p-3 sm:p-4 mb-4 bg-oxford-50/30">
           <span className="text-oxford-600 text-sm font-medium">Folio: </span>
           <span className="font-mono font-semibold text-black">
             {registroCompleto?.folio ?? folioPreview}
@@ -130,14 +131,14 @@ export default function App() {
                 <button
                   type="button"
                   onClick={onGenerarPDF}
-                  className="px-4 py-2 bg-black text-white rounded border-2 border-black font-medium hover:bg-oxford-800"
+                  className="px-4 py-3 min-h-[44px] bg-black text-white rounded border-2 border-black font-medium hover:bg-oxford-800 touch-manipulation"
                 >
                   Descargar PDF
                 </button>
                 <button
                   type="button"
                   onClick={onNuevoRegistro}
-                  className="px-4 py-2 border-2 border-oxford-400 text-oxford-800 rounded font-medium hover:bg-oxford-100"
+                  className="px-4 py-3 min-h-[44px] border-2 border-oxford-400 text-oxford-800 rounded font-medium hover:bg-oxford-100 touch-manipulation"
                 >
                   Nuevo registro
                 </button>

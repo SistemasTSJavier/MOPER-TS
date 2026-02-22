@@ -64,12 +64,12 @@ export function PanelLateral({ registroIdActual, onSeleccionarRegistro, onNuevoR
   const listAprob = resumen?.registrosAprobados ?? []
 
   return (
-    <aside className="w-72 shrink-0 border-r-2 border-oxford-200 bg-oxford-50/50 flex flex-col">
-      <div className="p-3 border-b border-oxford-200">
+    <aside className="w-full md:w-72 shrink-0 border-b-2 md:border-b-0 md:border-r-2 border-oxford-200 bg-oxford-50/50 flex flex-col max-h-[40vh] md:max-h-none overflow-hidden">
+      <div className="p-2 sm:p-3 border-b border-oxford-200 shrink-0">
         <button
           type="button"
           onClick={onNuevoRegistro}
-          className="w-full py-2 px-3 bg-black text-white rounded text-sm font-medium hover:bg-oxford-800"
+          className="w-full py-3 px-3 min-h-[44px] bg-black text-white rounded text-sm font-medium hover:bg-oxford-800 touch-manipulation"
         >
           Nuevo registro
         </button>
