@@ -1,5 +1,6 @@
 import { Router, Request, Response } from 'express'
 import { query, getNextFolio } from '../db/index.js'
+import { pgErrorDetail } from '../utils/pgError.js'
 
 const router = Router()
 
@@ -25,20 +26,6 @@ function toDateOnly(s: string | null | undefined): string | null {
   if (!trimmed) return null
   const match = trimmed.match(/^(\d{4}-\d{2}-\d{2})/)
   return match ? match[1] : null
-}
-
-/** Mensaje seguro para el cliente según código de error PostgreSQL. */
-function pgErrorDetail(err: unknown): string | undefined {
-  const e = err as { code?: string; message?: string }
-  if (e?.code === '22P02') return 'Formato de fecha o número inválido.'
-  if (e?.code === '23502') return 'Falta un dato requerido.'
-  if (e?.code === '23505') return 'Registro duplicado.'
-  if (e?.code === '22001') return 'Algún texto excede el límite (ej. CURP 18 caracteres).'
-  if (e?.code === '28P01' || e?.code === '3D000') return 'Error de conexión a la base de datos.'
-  if (e?.code === '42703') return 'Base de datos desactualizada (falta columna). Ejecutar migraciones.'
-  if (e?.code === '42P01') return 'Tabla no existe. Ejecutar schema/migraciones en la base de datos.'
-  if (e?.message) return e.message
-  return undefined
 }
 
 router.post('/', async (req: Request, res: Response) => {
@@ -115,7 +102,12 @@ router.get('/', async (_req: Request, res: Response) => {
       registrosAprobados: listAprob.rows,
     })
   } catch (e) {
-    res.status(500).json({ error: 'Error al listar registros' })
+    const detail = pgErrorDetail(e)
+    console.error('GET /api/moper error:', e)
+    res.status(500).json({
+      error: 'Error al listar registros',
+      ...(detail && { detail }),
+    })
   }
 })
 

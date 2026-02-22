@@ -21,13 +21,25 @@ interface PanelLateralProps {
 export function PanelLateral({ registroIdActual, onSeleccionarRegistro, onNuevoRegistro, refreshTrigger = 0 }: PanelLateralProps) {
   const [resumen, setResumen] = useState<ResumenRegistros | null>(null)
   const [cargando, setCargando] = useState(true)
+  const [errorApi, setErrorApi] = useState<string | null>(null)
 
   const cargar = () => {
     setCargando(true)
+    setErrorApi(null)
     fetch(`${API}/moper`)
-      .then((r) => r.json())
-      .then(setResumen)
-      .catch(() => setResumen(null))
+      .then((r) => r.json().then((d) => ({ ok: r.ok, data: d })))
+      .then(({ ok, data }) => {
+        if (ok) {
+          setResumen(data)
+        } else {
+          setResumen(null)
+          setErrorApi(data.detail ? `${data.error || 'Error'}: ${data.detail}` : (data.error || 'Error al cargar'))
+        }
+      })
+      .catch(() => {
+        setResumen(null)
+        setErrorApi('Error de conexión')
+      })
       .finally(() => setCargando(false))
   }
 
@@ -77,6 +89,10 @@ export function PanelLateral({ registroIdActual, onSeleccionarRegistro, onNuevoR
 
       {cargando ? (
         <div className="p-3 text-sm text-oxford-500">Cargando...</div>
+      ) : errorApi ? (
+        <div className="p-3 text-sm text-red-600 bg-red-50 border border-red-200 rounded">
+          {errorApi}
+        </div>
       ) : (
         <>
           {/* Aprobaciones pendientes */}
