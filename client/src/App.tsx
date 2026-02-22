@@ -4,9 +4,8 @@ import { PanelLateral } from './components/PanelLateral'
 import { FormularioMoper } from './components/FormularioMoper'
 import { FirmasWorkflow } from './components/FirmasWorkflow'
 import { FooterLegal } from './components/FooterLegal'
+import { API } from './api'
 import { generarPDF, loadLogoAsDataUrl } from './utils/pdf'
-
-const API = '/api'
 
 export interface RegistroMoper {
   id?: number
@@ -44,11 +43,11 @@ export default function App() {
   const [refreshPanel, setRefreshPanel] = useState(0)
 
   useEffect(() => {
-    fetch(`${API}/folios/preview`).then((r) => r.json()).then((d) => d.folio && setFolioPreview(d.folio)).catch(() => {})
+    fetch(`${API}/api/folios/preview`).then((r) => r.json()).then((d) => d.folio && setFolioPreview(d.folio)).catch(() => {})
   }, [])
 
   const cargarRegistro = useCallback((id: number) => {
-    fetch(`${API}/moper/${id}`)
+    fetch(`${API}/api/moper/${id}`)
       .then((r) => r.json())
       .then((r) => {
         setRegistroCompleto(r)
@@ -80,10 +79,7 @@ export default function App() {
   }, [registroCompleto])
 
   const actualizarFolioPreview = useCallback(() => {
-    fetch(`${API}/folios/preview`)
-      .then((r) => r.json())
-      .then((d) => d.folio && setFolioPreview(d.folio))
-      .catch(() => {})
+    fetch(`${API}/api/folios/preview`).then((r) => r.json()).then((d) => d.folio && setFolioPreview(d.folio)).catch(() => {})
   }, [])
 
   const onNuevoRegistro = useCallback(() => {

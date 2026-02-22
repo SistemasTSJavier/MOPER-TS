@@ -1,9 +1,9 @@
 import { useState, useCallback, useEffect } from 'react'
 
-const API = '/api'
+import { API } from '../api'
 
 interface FormularioMoperProps {
-  onGuardar: (id: number, folio: string) => void
+  onGuardar: (id: number, folio: string | null) => void
   registroId: number | null
 }
 
@@ -66,7 +66,7 @@ export function FormularioMoper({ onGuardar, registroId }: FormularioMoperProps)
     setError('')
     setGuardando(true)
     try {
-      const res = await fetch(`${API}/moper`, {
+      const res = await fetch(`${API}/api/moper`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload),

@@ -1,8 +1,7 @@
 import { useState, useEffect } from 'react'
 import { format } from 'date-fns'
 import { es } from 'date-fns/locale'
-
-const API = '/api'
+import { API } from '../api'
 
 export interface ResumenRegistros {
   pendientes: number
@@ -26,12 +25,11 @@ export function PanelLateral({ registroIdActual, onSeleccionarRegistro, onNuevoR
   const cargar = () => {
     setCargando(true)
     setErrorApi(null)
-    fetch(`${API}/moper`)
+    fetch(`${API}/api/moper`)
       .then((r) => r.json().then((d) => ({ ok: r.ok, data: d })))
       .then(({ ok, data }) => {
-        if (ok) {
-          setResumen(data)
-        } else {
+        if (ok) setResumen(data)
+        else {
           setResumen(null)
           setErrorApi(data.detail ? `${data.error || 'Error'}: ${data.detail}` : (data.error || 'Error al cargar'))
         }

@@ -4,7 +4,7 @@ import { format } from 'date-fns'
 import { es } from 'date-fns/locale'
 import { SignaturePad } from './SignaturePad'
 
-const API = '/api'
+import { API } from '../api'
 
 const FIRMAS = [
   { key: 'conformidad', label: 'Firma de conformidad', colAt: 'firma_conformidad_at', colNombre: 'firma_conformidad_nombre', colImagen: 'firma_conformidad_imagen' },
@@ -26,7 +26,7 @@ export function FirmasWorkflow({ registroId, registro, onFirmaRegistrada }: Firm
   const registrarFirma = async (tipo: string, imagen: string) => {
     setEnviando(true)
     try {
-      const res = await fetch(`${API}/moper/${registroId}/firma`, {
+      const res = await fetch(`${API}/api/moper/${registroId}/firma`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ tipo, imagen }),
