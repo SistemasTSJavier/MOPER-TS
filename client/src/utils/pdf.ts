@@ -24,7 +24,8 @@ const A4_W_MM = 210
 const A4_H_MM = 297
 
 /** Logo como marca de agua de fondo: tamaño y opacidad para no desenfocar el contenido. */
-const WATERMARK_LOGO_W_MM = 70
+const WATERMARK_LOGO_W_MM = 130
+const WATERMARK_LOGO_RATIO = 0.6
 const WATERMARK_OPACITY = 0.12
 
 /** Carga la imagen del logo y la devuelve como data URL para el PDF (prueba image.png y logo.png). */
@@ -51,11 +52,11 @@ export function generarPDF(registro: RegistroMoper, logoDataUrl?: string | null)
   const margin = 18
   let y = 18
 
-  // Logo como fondo de hoja (marca de agua transparente), dibujado primero para que no tape el texto
+  // Logo como fondo de hoja (marca de agua transparente), centrado a la medida de la hoja A4
   if (logoDataUrl && logoDataUrl.startsWith('data:image/')) {
     try {
       const logoW = WATERMARK_LOGO_W_MM
-      const logoH = logoW * 0.6
+      const logoH = logoW * WATERMARK_LOGO_RATIO
       const xLogo = (pageW - logoW) / 2
       const yLogo = (pageH - logoH) / 2
       const gStateOpacity = doc.GState({ opacity: WATERMARK_OPACITY })
