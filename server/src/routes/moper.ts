@@ -1,7 +1,7 @@
 import { Router, Request, Response } from 'express'
 import { query, getNextFolio } from '../db/index.js'
 import { pgErrorDetail } from '../utils/pgError.js'
-import { requireAuth } from '../middleware/auth.js'
+import { requireAuth, optionalAuth } from '../middleware/auth.js'
 import type { AuthRequest } from '../middleware/auth.js'
 import { generarCodigoAcceso } from '../utils/codigoAcceso.js'
 
@@ -238,7 +238,7 @@ router.get('/:id', requireAuth, async (req: Request, res: Response) => {
   }
 })
 
-router.patch('/:id/firma', async (req: AuthRequest, res: Response) => {
+router.patch('/:id/firma', optionalAuth, async (req: AuthRequest, res: Response) => {
   const { tipo, imagen, codigo_acceso } = req.body as { tipo: string; imagen?: string; codigo_acceso?: string }
   const valid = ['conformidad', 'rh', 'gerente', 'control']
   if (!valid.includes(tipo) || !imagen?.startsWith?.('data:image/')) {
@@ -260,7 +260,12 @@ router.patch('/:id/firma', async (req: AuthRequest, res: Response) => {
       return res.status(401).json({ error: 'Código de acceso incorrecto' })
     }
   } else {
-    if (!req.user) return res.status(401).json({ error: 'Debe iniciar sesión para esta firma' })
+    if (!req.user) {
+      const hasAuth = !!req.headers.authorization?.trim()
+      return res.status(401).json({
+        error: hasAuth ? 'Token inválido o expirado. Cierre sesión e inicie de nuevo.' : 'Debe iniciar sesión para esta firma',
+      })
+    }
     const rolFirma: Record<string, string[]> = { rh: ['rh', 'admin'], gerente: ['gerente', 'admin'], control: ['control', 'admin'] }
     const rolesOk = rolFirma[tipo]
     if (!rolesOk?.includes(req.user.rol)) {

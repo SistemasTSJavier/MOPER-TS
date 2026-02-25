@@ -19,7 +19,7 @@ import bcrypt from 'bcrypt'
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 
 const app = express()
-app.use(cors())
+app.use(cors({ allowedHeaders: ['Content-Type', 'Authorization'], credentials: true }))
 app.use(express.json())
 
 app.use('/api/health', healthRouter)

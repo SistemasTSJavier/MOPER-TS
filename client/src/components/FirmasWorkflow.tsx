@@ -26,7 +26,7 @@ interface FirmasWorkflowProps {
 const REQUIERE_CODIGO = 'conformidad' // Firma del oficial del MOPER
 
 export function FirmasWorkflow({ registroId, registro, onFirmaRegistrada, modoCodigo = false, codigoAcceso: codigoAccesoProp = '' }: FirmasWorkflowProps) {
-  const { authHeaders } = useAuth()
+  const { authHeaders, logout } = useAuth()
   const [activo, setActivo] = useState<string | null>(null)
   const [enviando, setEnviando] = useState(false)
   const [codigoAcceso, setCodigoAcceso] = useState('')
@@ -42,7 +42,15 @@ export function FirmasWorkflow({ registroId, registro, onFirmaRegistrada, modoCo
         body: JSON.stringify(body),
       })
       const data = await res.json()
-      if (!res.ok) throw new Error(data.error || 'Error')
+      if (!res.ok) {
+        if (res.status === 401 && data.error?.includes('Token')) {
+          logout()
+          alert('Sesión expirada o inválida. Inicie sesión de nuevo.')
+        } else {
+          throw new Error(data.error || 'Error')
+        }
+        return
+      }
       setActivo(null)
       setCodigoAcceso('')
       onFirmaRegistrada()
