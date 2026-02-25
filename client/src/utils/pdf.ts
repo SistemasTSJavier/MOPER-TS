@@ -23,7 +23,9 @@ const FOOTER_LEGAL = [
 const A4_W_MM = 210
 const A4_H_MM = 297
 
-const LOGO_HEADER_H_MM = 10
+/** Logo como marca de agua de fondo: tamaño y opacidad para no desenfocar el contenido. */
+const WATERMARK_LOGO_W_MM = 70
+const WATERMARK_OPACITY = 0.12
 
 /** Carga la imagen del logo y la devuelve como data URL para el PDF (prueba image.png y logo.png). */
 export function loadLogoAsDataUrl(): Promise<string | null> {
@@ -45,26 +47,31 @@ export function loadLogoAsDataUrl(): Promise<string | null> {
 export function generarPDF(registro: RegistroMoper, logoDataUrl?: string | null) {
   const doc = new jsPDF({ unit: 'mm', format: 'a4' })
   const pageW = A4_W_MM
+  const pageH = A4_H_MM
   const margin = 18
   let y = 18
+
+  // Logo como fondo de hoja (marca de agua transparente), dibujado primero para que no tape el texto
+  if (logoDataUrl && logoDataUrl.startsWith('data:image/')) {
+    try {
+      const logoW = WATERMARK_LOGO_W_MM
+      const logoH = logoW * 0.6
+      const xLogo = (pageW - logoW) / 2
+      const yLogo = (pageH - logoH) / 2
+      const gStateOpacity = doc.GState({ opacity: WATERMARK_OPACITY })
+      doc.setGState(gStateOpacity)
+      doc.addImage(logoDataUrl, 'PNG', xLogo, yLogo, logoW, logoH)
+      doc.setGState(doc.GState({ opacity: 1 }))
+    } catch {
+      // Si falla la marca de agua, se omite sin afectar el resto
+    }
+  }
 
   doc.setFont('helvetica', 'bold')
   doc.setFontSize(14)
   doc.text('TACTICAL', margin, y)
   doc.text('SUPPORT', pageW - margin - doc.getTextWidth('SUPPORT'), y)
-  if (logoDataUrl && logoDataUrl.startsWith('data:image/')) {
-    try {
-      const logoW = 25
-      doc.addImage(logoDataUrl, 'PNG', pageW / 2 - logoW / 2, y - 2, logoW, LOGO_HEADER_H_MM)
-    } catch {
-      doc.setFontSize(10)
-      doc.text('[Logo]', pageW / 2 - doc.getTextWidth('[Logo]') / 2, y)
-    }
-  } else {
-    doc.setFontSize(10)
-    doc.text('[Logo]', pageW / 2 - doc.getTextWidth('[Logo]') / 2, y)
-  }
-  y += LOGO_HEADER_H_MM + 2
+  y += 10
 
   doc.setFont('helvetica', 'bold')
   doc.setFontSize(11)
