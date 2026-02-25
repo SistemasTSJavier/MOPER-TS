@@ -29,9 +29,7 @@ export function FirmasWorkflow({ registroId, registro, onFirmaRegistrada, modoCo
   const { authHeaders } = useAuth()
   const [activo, setActivo] = useState<string | null>(null)
   const [enviando, setEnviando] = useState(false)
-  const [codigoModal, setCodigoModal] = useState<string | null>(null)
   const [codigoAcceso, setCodigoAcceso] = useState('')
-  const [errorCodigo, setErrorCodigo] = useState('')
 
   const registrarFirma = async (tipo: string, imagen: string, codigo?: string) => {
     setEnviando(true)
@@ -47,8 +45,6 @@ export function FirmasWorkflow({ registroId, registro, onFirmaRegistrada, modoCo
       if (!res.ok) throw new Error(data.error || 'Error')
       setActivo(null)
       setCodigoAcceso('')
-      setCodigoModal(null)
-      setErrorCodigo('')
       onFirmaRegistrada()
     } catch (e) {
       alert(e instanceof Error ? e.message : 'Error al registrar firma')
@@ -59,29 +55,15 @@ export function FirmasWorkflow({ registroId, registro, onFirmaRegistrada, modoCo
 
   const abrirPanelFirma = (key: string) => {
     if (modoCodigo && key !== REQUIERE_CODIGO) return // En modo código solo conformidad es clickeable
+    // Conformidad: solo se puede firmar entrando con el código de acceso (VistaPorCodigo). En la app con sesión no se muestra botón Firmar.
     if (key === REQUIERE_CODIGO) {
       if (modoCodigo && codigoAccesoProp) {
         setCodigoAcceso(codigoAccesoProp)
         setActivo(key)
-      } else {
-        setCodigoModal(key)
-        setCodigoAcceso(registro?.codigo_acceso ?? '')
-        setErrorCodigo('')
       }
-    } else {
-      setActivo(key)
-    }
-  }
-
-  const continuarConCodigo = () => {
-    const codigo = codigoAcceso.trim() || codigoAccesoProp
-    if (!codigo) {
-      setErrorCodigo('Ingrese el código de acceso')
       return
     }
-    setErrorCodigo('')
-    setCodigoAcceso(codigo)
-    setActivo(codigoModal)
+    setActivo(key)
   }
 
   return (
@@ -118,6 +100,8 @@ export function FirmasWorkflow({ registroId, registro, onFirmaRegistrada, modoCo
                     </>
                   )}
                 </div>
+              ) : key === REQUIERE_CODIGO && !modoCodigo ? (
+                <p className="text-sm text-oxford-600">Solo el oficial puede firmar entrando con el código de acceso.</p>
               ) : (
                 <button
                   type="button"
@@ -132,49 +116,11 @@ export function FirmasWorkflow({ registroId, registro, onFirmaRegistrada, modoCo
         })}
       </div>
 
-      {/* Modal: código de acceso para firma del oficial del MOPER (solo en app con sesión) */}
-      {codigoModal && !activo && !modoCodigo && (
-        <div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4"
-          onClick={(e) => e.target === e.currentTarget && setCodigoModal(null)}
-        >
-          <div className="bg-white rounded-xl shadow-xl max-w-md w-full p-4" onClick={(e) => e.stopPropagation()}>
-            <h3 className="text-lg font-bold text-oxford-900 mb-2">Firma del oficial del MOPER</h3>
-            <p className="text-sm text-oxford-600 mb-3">Ingrese el código de acceso para poder firmar.</p>
-            <input
-              type="password"
-              value={codigoAcceso}
-              onChange={(e) => { setCodigoAcceso(e.target.value); setErrorCodigo('') }}
-              placeholder="Código de acceso"
-              className="w-full border-2 border-oxford-300 rounded px-3 py-2 mb-2 text-black placeholder-oxford-400"
-              autoFocus
-            />
-            {errorCodigo && <p className="text-red-600 text-sm mb-2">{errorCodigo}</p>}
-            <div className="flex gap-2 justify-end">
-              <button
-                type="button"
-                onClick={() => { setCodigoModal(null); setCodigoAcceso(''); setErrorCodigo('') }}
-                className="px-3 py-1.5 border-2 border-oxford-400 rounded text-sm font-medium text-oxford-800 hover:bg-oxford-100"
-              >
-                Cancelar
-              </button>
-              <button
-                type="button"
-                onClick={continuarConCodigo}
-                className="px-3 py-1.5 bg-black text-white rounded text-sm font-medium hover:bg-oxford-800"
-              >
-                Continuar a firmar
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
       {/* Modal: panel para dibujar la firma */}
       {activo && (
         <div
           className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4"
-          onClick={(e) => e.target === e.currentTarget && (setActivo(null), setCodigoModal(null))}
+          onClick={(e) => e.target === e.currentTarget && setActivo(null)}
         >
           <div className="bg-white rounded-xl shadow-xl max-w-md w-full p-4" onClick={(e) => e.stopPropagation()}>
             <h3 className="text-lg font-bold text-oxford-900 mb-3">
@@ -183,7 +129,7 @@ export function FirmasWorkflow({ registroId, registro, onFirmaRegistrada, modoCo
             <SignaturePad
               label="Dibuje su firma en el recuadro"
               onConfirm={(dataUrl) => activo && registrarFirma(activo, dataUrl, activo === REQUIERE_CODIGO ? (codigoAcceso || codigoAccesoProp) : undefined)}
-              onCancel={() => { setActivo(null); setCodigoModal(null) }}
+              onCancel={() => setActivo(null)}
             />
             {enviando && <p className="mt-2 text-sm text-oxford-600">Guardando firma...</p>}
           </div>
