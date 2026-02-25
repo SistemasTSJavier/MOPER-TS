@@ -81,6 +81,10 @@ export function generarPDF(registro: RegistroMoper, logoDataUrl?: string | null)
   doc.text('Fecha de creación: ' + (registro.created_at ? format(new Date(registro.created_at), "d 'de' MMMM yyyy, HH:mm", { locale: es }) : '-'), margin, y)
   y += 5
   doc.text('Solicitado por: ' + (registro.solicitado_por || '-'), margin, y)
+  y += 5
+  doc.text('Fecha de llenado: ' + (registro.fecha_llenado || '-'), margin, y)
+  y += 5
+  doc.text('Fecha de registro: ' + (registro.fecha_registro || '-'), margin, y)
   y += 8
 
   doc.setFont('helvetica', 'bold')
@@ -129,7 +133,7 @@ export function generarPDF(registro: RegistroMoper, logoDataUrl?: string | null)
   doc.setFontSize(9)
   const firmas = [
     { label: 'Firma de conformidad', nombre: registro.firma_conformidad_nombre, fecha: registro.firma_conformidad_at, imagen: registro.firma_conformidad_imagen },
-    { label: 'Recursos Humanos', nombre: registro.firma_rh_nombre, fecha: registro.firma_rh_at, imagen: registro.firma_rh_imagen },
+    { label: 'Gerente RH', nombre: registro.firma_rh_nombre, fecha: registro.firma_rh_at, imagen: registro.firma_rh_imagen },
     { label: 'Gerente de Operaciones', nombre: registro.firma_gerente_nombre, fecha: registro.firma_gerente_at, imagen: registro.firma_gerente_imagen },
     { label: 'Centro de Control', nombre: registro.firma_control_nombre, fecha: registro.firma_control_at, imagen: registro.firma_control_imagen },
   ]

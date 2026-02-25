@@ -9,11 +9,11 @@ import pg from 'pg'
 
 const { Pool } = pg
 
+// Firma por correo: gterh@ = Gerente RH, gerenteoperaciones@ = Gerente Operaciones, coordinadorcentrodecontrol@ = Centro de Control
 const USUARIOS = [
-  { email: 'gterh@tacticalsupport.com.mx', password: 'Tactical2026', nombre: 'Gerente RH', rol: 'gerente' as const },
-  { email: 'centrodecontrol@tacticalsupport.com.mx', password: 'Tactical2026', nombre: 'Centro de Control', rol: 'control' as const },
-  { email: 'relacioneslaborales@tacticalsupport.com.mx', password: 'Tactical2026', nombre: 'Relaciones Laborales', rol: 'rh' as const },
-  { email: 'operaciones@tacticalsupport.com.mx', password: 'Tactical2026', nombre: 'Operaciones', rol: 'gerente' as const },
+  { email: 'gterh@tacticalsupport.com.mx', password: 'Tactical2026', nombre: 'Gerente RH', rol: 'rh' as const },
+  { email: 'gerenteoperaciones@tacticalsupport.com.mx', password: 'Tactical2026', nombre: 'Gerente de Operaciones', rol: 'gerente' as const },
+  { email: 'coordinadorcentrodecontrol@tacticalsupport.com.mx', password: 'Tactical2026', nombre: 'Coordinador Centro de Control', rol: 'control' as const },
 ]
 
 async function main() {
@@ -49,7 +49,7 @@ async function main() {
       )
       console.log('  OK:', emailNorm, '→', u.rol)
     }
-    console.log('\nListo. Los 4 usuarios ya pueden iniciar sesión en la app.')
+    console.log('\nListo. Los 3 usuarios de firma ya pueden iniciar sesión (Gerente RH, Gerente Operaciones, Centro de Control).')
   } catch (e) {
     console.error('Error:', e)
     process.exit(1)

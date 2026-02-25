@@ -8,7 +8,7 @@ import { API } from '../api'
 
 const FIRMAS = [
   { key: 'conformidad', label: 'Firma de conformidad', colAt: 'firma_conformidad_at', colNombre: 'firma_conformidad_nombre', colImagen: 'firma_conformidad_imagen' },
-  { key: 'rh', label: 'Recursos Humanos', colAt: 'firma_rh_at', colNombre: 'firma_rh_nombre', colImagen: 'firma_rh_imagen' },
+  { key: 'rh', label: 'Gerente RH', colAt: 'firma_rh_at', colNombre: 'firma_rh_nombre', colImagen: 'firma_rh_imagen' },
   { key: 'gerente', label: 'Gerente de Operaciones', colAt: 'firma_gerente_at', colNombre: 'firma_gerente_nombre', colImagen: 'firma_gerente_imagen' },
   { key: 'control', label: 'Centro de Control', colAt: 'firma_control_at', colNombre: 'firma_control_nombre', colImagen: 'firma_control_imagen' },
 ] as const

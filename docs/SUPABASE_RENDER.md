@@ -115,13 +115,17 @@ npm run create-user -- control@empresa.com ClaveControl "Ana Control" control
 
 **Roles válidos:** `admin`, `gerente`, `rh`, `control`.
 
-**Usuarios de Tactical Support (ya definidos):** para crear de una vez los 4 usuarios (gterh, centrodecontrol, relacioneslaborales, operaciones) con las contraseñas indicadas, desde la carpeta `server` ejecuta:
+**Usuarios de Tactical Support (firmas por correo):** para crear los 3 usuarios que firman según su rol, desde la carpeta `server` ejecuta:
 
 ```bash
 npm run seed-usuarios
 ```
 
-Requiere `DATABASE_URL` en `server/.env` con la URI del pooler de Supabase. Si la app en Render ya usa esa misma base, los usuarios quedarán creados ahí y podrán iniciar sesión.
+- **gterh@tacticalsupport.com.mx** → Gerente RH (firma “Gerente RH”).
+- **gerenteoperaciones@tacticalsupport.com.mx** → Gerente de Operaciones (firma “Gerente de Operaciones”).
+- **coordinadorcentrodecontrol@tacticalsupport.com.mx** → Centro de Control (firma “Centro de Control”).
+
+Contraseña por defecto: `Tactical2026`. Requiere `DATABASE_URL` en `server/.env` con la URI del pooler de Supabase.
 
 El script `create-user` usa la variable **`DATABASE_URL`** del archivo `server/.env` (la misma URI del pooler de Supabase que en Render). Si ya tienes esa variable en `.env` para desarrollar, el script se conecta a la misma base y crea el usuario ahí. Así los usuarios que crees se verán al iniciar sesión en la app (local o en Render).
 

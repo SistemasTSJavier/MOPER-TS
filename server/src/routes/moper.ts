@@ -9,6 +9,7 @@ const router = Router()
 
 const SELECT_REGISTRO = `
   SELECT m.id, m.folio, m.fecha_hora, m.fecha_inicio_efectiva, m.created_at, m.codigo_acceso,
+    m.fecha_llenado, m.fecha_registro,
     COALESCE(m.oficial_nombre, o.nombre) as oficial_nombre,
     COALESCE(m.curp, o.curp) as curp,
     COALESCE(m.fecha_ingreso::text, o.fecha_ingreso::text) as fecha_ingreso,
@@ -45,6 +46,8 @@ interface MoperBody {
   motivo: string
   creado_por?: string
   solicitado_por?: string
+  fecha_llenado?: string
+  fecha_registro?: string
   asignar_folio_ahora?: boolean
 }
 
@@ -70,6 +73,8 @@ router.post('/', requireAuth, async (req: AuthRequest, res: Response) => {
   try {
     const creadoPor = (body.creado_por || '').trim() || null
     const solicitadoPor = (body.solicitado_por || '').trim() || null
+    const fechaLlenado = (body.fecha_llenado || '').trim() || null
+    const fechaRegistro = (body.fecha_registro || '').trim() || null
     const codigoAcceso = generarCodigoAcceso()
     const folio = await getNextFolio()
     const row = await query<{ id: number }>(
@@ -77,8 +82,8 @@ router.post('/', requireAuth, async (req: AuthRequest, res: Response) => {
         folio, oficial_id, oficial_nombre, curp, fecha_ingreso, fecha_inicio_efectiva,
         servicio_actual_id, servicio_nuevo_id, puesto_actual_id, puesto_nuevo_id,
         servicio_actual_nombre, servicio_nuevo_nombre, puesto_actual_nombre, puesto_nuevo_nombre,
-        sueldo_actual, sueldo_nuevo, motivo, creado_por, solicitado_por, codigo_acceso
-      ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20)
+        sueldo_actual, sueldo_nuevo, motivo, creado_por, solicitado_por, fecha_llenado, fecha_registro, codigo_acceso
+      ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21,$22)
       RETURNING id`,
       [
         folio,
@@ -100,6 +105,8 @@ router.post('/', requireAuth, async (req: AuthRequest, res: Response) => {
         (body.motivo || '').trim() || '',
         creadoPor,
         solicitadoPor,
+        fechaLlenado,
+        fechaRegistro,
         codigoAcceso,
       ]
     )

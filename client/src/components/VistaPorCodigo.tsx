@@ -66,7 +66,9 @@ export function VistaPorCodigo() {
                 `Servicio: ${registro.servicio_actual_nombre || '—'} → ${registro.servicio_nuevo_nombre || '—'}`,
                 `Puesto: ${registro.puesto_actual_nombre || '—'} → ${registro.puesto_nuevo_nombre || '—'}`,
                 `Motivo: ${registro.motivo || '—'}`,
-              ].join('\r\n')
+                '',
+                typeof window !== 'undefined' ? `App MOPER: ${window.location.origin}${window.location.pathname}` : '',
+              ].filter(Boolean).join('\r\n')
             )}`}
             className="inline-flex items-center justify-center px-4 py-2 border-2 border-oxford-400 rounded font-medium text-oxford-800 hover:bg-oxford-100"
           >

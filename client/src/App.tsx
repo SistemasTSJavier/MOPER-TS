@@ -26,6 +26,8 @@ export interface RegistroMoper {
   puesto_nuevo_nombre?: string
   creado_por?: string | null
   solicitado_por?: string | null
+  fecha_llenado?: string | null
+  fecha_registro?: string | null
   created_at?: string | null
   firma_conformidad_at?: string | null
   firma_conformidad_nombre?: string | null
@@ -102,6 +104,7 @@ export default function App() {
 
   const mailtoHref = useCallback((registro: RegistroMoper) => {
     const subject = `MOPER - ${registro.folio || 'Movimiento de Personal'}`
+    const appUrl = typeof window !== 'undefined' ? window.location.origin + window.location.pathname : ''
     const line = (label: string, value: string | number | null | undefined) =>
       value != null && String(value).trim() !== '' ? `${label}: ${String(value).trim()}` : null
     const lines = [
@@ -112,6 +115,7 @@ export default function App() {
       line('Puesto actual → nuevo', registro.puesto_actual_nombre && registro.puesto_nuevo_nombre ? `${registro.puesto_actual_nombre} → ${registro.puesto_nuevo_nombre}` : null),
       line('Motivo', registro.motivo),
       registro.codigo_acceso ? `\nCódigo de acceso para firma del oficial: ${registro.codigo_acceso}` : null,
+      appUrl ? `\n\nApp MOPER: ${appUrl}` : null,
     ].filter(Boolean)
     const body = lines.join('\r\n')
     return `mailto:?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`

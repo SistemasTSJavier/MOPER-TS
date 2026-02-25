@@ -83,6 +83,8 @@ export async function ensureTextColumns(): Promise<void> {
     'ALTER TABLE moper_registros ADD COLUMN IF NOT EXISTS creado_por TEXT',
     'ALTER TABLE moper_registros ADD COLUMN IF NOT EXISTS solicitado_por TEXT',
     'ALTER TABLE moper_registros ADD COLUMN IF NOT EXISTS codigo_acceso TEXT',
+    'ALTER TABLE moper_registros ADD COLUMN IF NOT EXISTS fecha_llenado TEXT',
+    'ALTER TABLE moper_registros ADD COLUMN IF NOT EXISTS fecha_registro TEXT',
   ]
   for (const sql of alters) {
     await getPool().query(sql)

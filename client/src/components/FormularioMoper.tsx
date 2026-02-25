@@ -34,6 +34,8 @@ export function FormularioMoper({ onGuardar, registroId, registro }: FormularioM
   const [motivo, setMotivo] = useState('')
   const [creadoPor, setCreadoPor] = useState('')
   const [solicitadoPor, setSolicitadoPor] = useState('')
+  const [fechaLlenado, setFechaLlenado] = useState('')
+  const [fechaRegistro, setFechaRegistro] = useState('')
   const [guardando, setGuardando] = useState(false)
   const [error, setError] = useState('')
 
@@ -57,6 +59,8 @@ export function FormularioMoper({ onGuardar, registroId, registro }: FormularioM
     motivo: motivo.trim(),
     creado_por: creadoPor.trim() || undefined,
     solicitado_por: solicitadoPor.trim() || undefined,
+    fecha_llenado: fechaLlenado.trim() || undefined,
+    fecha_registro: fechaRegistro.trim() || undefined,
   }
 
   const guardar = async () => {
@@ -98,8 +102,8 @@ export function FormularioMoper({ onGuardar, registroId, registro }: FormularioM
       {/* Sección A: Datos Generales */}
       <section className="border-2 border-oxford-300 rounded-lg p-3 sm:p-4 bg-white">
         <h2 className="text-sm sm:text-base font-bold text-black border-b border-oxford-300 pb-2 mb-3 sm:mb-4">A. Datos Generales</h2>
-        {(registro?.creado_por != null || registro?.solicitado_por != null || registro?.created_at) && (
-          <div className="grid gap-3 sm:grid-cols-3 mb-4 p-3 bg-oxford-50 rounded border border-oxford-200">
+        {(registro?.creado_por != null || registro?.solicitado_por != null || registro?.created_at || registro?.fecha_llenado != null || registro?.fecha_registro != null) && (
+          <div className="grid gap-3 grid-cols-2 sm:grid-cols-3 mb-4 p-3 bg-oxford-50 rounded border border-oxford-200">
             <div>
               <span className="text-xs font-medium text-oxford-600">Creado por:</span>
               <p className="text-sm text-black">{registro?.creado_por || '-'}</p>
@@ -113,6 +117,14 @@ export function FormularioMoper({ onGuardar, registroId, registro }: FormularioM
             <div>
               <span className="text-xs font-medium text-oxford-600">Solicitado por:</span>
               <p className="text-sm text-black">{registro?.solicitado_por || '-'}</p>
+            </div>
+            <div>
+              <span className="text-xs font-medium text-oxford-600">Fecha de llenado:</span>
+              <p className="text-sm text-black">{registro?.fecha_llenado || '-'}</p>
+            </div>
+            <div>
+              <span className="text-xs font-medium text-oxford-600">Fecha de registro:</span>
+              <p className="text-sm text-black">{registro?.fecha_registro || '-'}</p>
             </div>
           </div>
         )}
@@ -136,6 +148,26 @@ export function FormularioMoper({ onGuardar, registroId, registro }: FormularioM
                   value={solicitadoPor}
                   onChange={(e) => setSolicitadoPor(e.target.value)}
                   placeholder="Nombre de quien solicita"
+                  className="w-full border-2 border-oxford-300 rounded px-3 py-2 bg-white text-black placeholder-oxford-400"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-oxford-800 mb-1">Fecha de llenado (texto libre)</label>
+                <input
+                  type="text"
+                  value={fechaLlenado}
+                  onChange={(e) => setFechaLlenado(e.target.value)}
+                  placeholder="Ej: 15/01/2025 o Enero 2025"
+                  className="w-full border-2 border-oxford-300 rounded px-3 py-2 bg-white text-black placeholder-oxford-400"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-oxford-800 mb-1">Fecha de registro (texto libre)</label>
+                <input
+                  type="text"
+                  value={fechaRegistro}
+                  onChange={(e) => setFechaRegistro(e.target.value)}
+                  placeholder="Ej: 20/01/2025"
                   className="w-full border-2 border-oxford-300 rounded px-3 py-2 bg-white text-black placeholder-oxford-400"
                 />
               </div>

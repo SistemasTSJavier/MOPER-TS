@@ -68,6 +68,8 @@ CREATE TABLE IF NOT EXISTS moper_registros (
   motivo TEXT,
   creado_por TEXT,
   solicitado_por TEXT,
+  fecha_llenado TEXT,
+  fecha_registro TEXT,
   codigo_acceso TEXT UNIQUE,
   -- Firmas (workflow: imagen = firma dibujada en canvas)
   firma_conformidad_at TIMESTAMPTZ,
