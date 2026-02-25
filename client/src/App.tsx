@@ -171,6 +171,7 @@ export default function App() {
           onGuardar={onGuardar}
           registroId={registroId}
           registro={registroCompleto}
+          puedeEditar={user?.rol === 'admin' || user?.rol === 'gerente'}
         />
         {registroId && (
           <>

@@ -9,9 +9,9 @@ import pg from 'pg'
 
 const { Pool } = pg
 
-// Firma por correo: gterh@ = Gerente RH, gerenteoperaciones@ = Gerente Operaciones, coordinadorcentrodecontrol@ = Centro de Control
+// Gerente RH = admin (puede editar registros). Resto: firma por correo.
 const USUARIOS = [
-  { email: 'gterh@tacticalsupport.com.mx', password: 'Tactical2026', nombre: 'Gerente RH', rol: 'rh' as const },
+  { email: 'gterh@tacticalsupport.com.mx', password: 'Tactical2026', nombre: 'Gerente RH', rol: 'admin' as const },
   { email: 'gerenteoperaciones@tacticalsupport.com.mx', password: 'Tactical2026', nombre: 'Gerente de Operaciones', rol: 'gerente' as const },
   { email: 'coordinadorcentrodecontrol@tacticalsupport.com.mx', password: 'Tactical2026', nombre: 'Coordinador Centro de Control', rol: 'control' as const },
 ]

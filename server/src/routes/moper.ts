@@ -73,8 +73,9 @@ router.post('/', requireAuth, async (req: AuthRequest, res: Response) => {
   try {
     const creadoPor = (body.creado_por || '').trim() || null
     const solicitadoPor = (body.solicitado_por || '').trim() || null
-    const fechaLlenado = (body.fecha_llenado || '').trim() || null
-    const fechaRegistro = (body.fecha_registro || '').trim() || null
+    // Fecha de llenado: automática (fecha actual al crear). No se acepta del body.
+    const fechaLlenado = new Date().toISOString().slice(0, 10) // YYYY-MM-DD
+    const fechaRegistro = toDateOnly(body.fecha_registro) || null
     const codigoAcceso = generarCodigoAcceso()
     const folio = await getNextFolio()
     const row = await query<{ id: number }>(
@@ -121,6 +122,62 @@ router.post('/', requireAuth, async (req: AuthRequest, res: Response) => {
     console.error('POST /api/moper error:', e)
     res.status(500).json({
       error: 'Error al guardar registro',
+      ...(detail && { detail }),
+    })
+  }
+})
+
+/** Actualizar registro (solo admin o gerente). No modifica folio, codigo_acceso ni firmas. */
+router.patch('/:id', requireAuth, async (req: AuthRequest, res: Response) => {
+  const puedeEditar = req.user?.rol === 'admin' || req.user?.rol === 'gerente'
+  if (!puedeEditar) {
+    return res.status(403).json({ error: 'Sin permiso para editar registros' })
+  }
+  const id = req.params.id
+  const body = req.body as MoperBody | undefined
+  if (!body || typeof body !== 'object') {
+    return res.status(400).json({ error: 'Cuerpo inválido' })
+  }
+  const curpVal = (body.curp || '').trim().slice(0, 18) || null
+  const creadoPor = (body.creado_por || '').trim() || null
+  const solicitadoPor = (body.solicitado_por || '').trim() || null
+  const fechaRegistro = toDateOnly(body.fecha_registro) || null
+  try {
+    await query(
+      `UPDATE moper_registros SET
+        oficial_nombre = $1, curp = $2, fecha_ingreso = $3, fecha_inicio_efectiva = $4,
+        servicio_actual_nombre = $5, servicio_nuevo_nombre = $6,
+        puesto_actual_nombre = $7, puesto_nuevo_nombre = $8,
+        sueldo_actual = $9, sueldo_nuevo = $10, motivo = $11,
+        creado_por = $12, solicitado_por = $13, fecha_registro = $14,
+        updated_at = NOW()
+       WHERE id = $15`,
+      [
+        (body.oficial_nombre || '').trim() || null,
+        curpVal,
+        toDateOnly(body.fecha_ingreso) || null,
+        toDateOnly(body.fecha_inicio_efectiva) || null,
+        (body.servicio_actual_nombre || '').trim() || null,
+        (body.servicio_nuevo_nombre || '').trim() || null,
+        (body.puesto_actual_nombre || '').trim() || null,
+        (body.puesto_nuevo_nombre || '').trim() || null,
+        body.sueldo_actual ?? null,
+        body.sueldo_nuevo ?? 0,
+        (body.motivo || '').trim() || '',
+        creadoPor,
+        solicitadoPor,
+        fechaRegistro,
+        id,
+      ]
+    )
+    const r = await query(SELECT_REGISTRO + ' WHERE m.id = $1', [id])
+    if (r.rows.length === 0) return res.status(404).json({ error: 'No encontrado' })
+    res.json(r.rows[0])
+  } catch (e) {
+    const detail = pgErrorDetail(e)
+    console.error('PATCH /api/moper/:id error:', e)
+    res.status(500).json({
+      error: 'Error al actualizar',
       ...(detail && { detail }),
     })
   }

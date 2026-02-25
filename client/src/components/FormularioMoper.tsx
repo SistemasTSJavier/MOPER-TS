@@ -9,6 +9,8 @@ interface FormularioMoperProps {
   onGuardar: (id: number, folio: string | null) => void
   registroId: number | null
   registro: RegistroMoper | null
+  /** Si true (admin o gerente), puede editar el registro: formulario se rellena y permite actualizar. */
+  puedeEditar?: boolean
 }
 
 /** Fecha y hora local en formato para input datetime-local (yyyy-MM-ddTHH:mm) */
@@ -18,7 +20,14 @@ function fechaHoraLocal(): string {
   return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`
 }
 
-export function FormularioMoper({ onGuardar, registroId, registro }: FormularioMoperProps) {
+/** Formatea fecha YYYY-MM-DD para input type="date" */
+function toInputDate(val: string | null | undefined): string {
+  if (!val || !val.trim()) return ''
+  const s = val.trim().slice(0, 10)
+  return /^\d{4}-\d{2}-\d{2}$/.test(s) ? s : ''
+}
+
+export function FormularioMoper({ onGuardar, registroId, registro, puedeEditar = false }: FormularioMoperProps) {
   const { authHeaders } = useAuth()
   const [nombreOficial, setNombreOficial] = useState('')
   const [curp, setCurp] = useState('')
@@ -34,7 +43,6 @@ export function FormularioMoper({ onGuardar, registroId, registro }: FormularioM
   const [motivo, setMotivo] = useState('')
   const [creadoPor, setCreadoPor] = useState('')
   const [solicitadoPor, setSolicitadoPor] = useState('')
-  const [fechaLlenado, setFechaLlenado] = useState('')
   const [fechaRegistro, setFechaRegistro] = useState('')
   const [guardando, setGuardando] = useState(false)
   const [error, setError] = useState('')
@@ -44,6 +52,25 @@ export function FormularioMoper({ onGuardar, registroId, registro }: FormularioM
     const t = setInterval(actualizarFechaHora, 60_000)
     return () => clearInterval(t)
   }, [actualizarFechaHora])
+
+  useEffect(() => {
+    if (registro && registroId && puedeEditar) {
+      setNombreOficial(registro.oficial_nombre ?? '')
+      setCurp(registro.curp ?? '')
+      setFechaIngreso(toInputDate(registro.fecha_ingreso))
+      setFechaInicioEfectiva(toInputDate(registro.fecha_inicio_efectiva))
+      setServicioActual(registro.servicio_actual_nombre ?? '')
+      setServicioNuevo(registro.servicio_nuevo_nombre ?? '')
+      setPuestoActual(registro.puesto_actual_nombre ?? '')
+      setPuestoNuevo(registro.puesto_nuevo_nombre ?? '')
+      setSueldoActual(registro.sueldo_actual != null ? String(registro.sueldo_actual) : '')
+      setSueldoNuevo(registro.sueldo_nuevo != null ? String(registro.sueldo_nuevo) : '')
+      setMotivo(registro.motivo ?? '')
+      setCreadoPor(registro.creado_por ?? '')
+      setSolicitadoPor(registro.solicitado_por ?? '')
+      setFechaRegistro(registro.fecha_registro ?? '')
+    }
+  }, [registro, registroId, puedeEditar])
 
   const payload = {
     oficial_nombre: nombreOficial.trim(),
@@ -59,7 +86,7 @@ export function FormularioMoper({ onGuardar, registroId, registro }: FormularioM
     motivo: motivo.trim(),
     creado_por: creadoPor.trim() || undefined,
     solicitado_por: solicitadoPor.trim() || undefined,
-    fecha_llenado: fechaLlenado.trim() || undefined,
+    // fecha_llenado: se asigna automáticamente en el servidor al crear; no se envía
     fecha_registro: fechaRegistro.trim() || undefined,
   }
 
@@ -79,17 +106,31 @@ export function FormularioMoper({ onGuardar, registroId, registro }: FormularioM
     setError('')
     setGuardando(true)
     try {
-      const res = await fetch(`${API}/api/moper`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', ...authHeaders() },
-        body: JSON.stringify(payload),
-      })
-      const data = await res.json()
-      if (!res.ok) {
-        const msg = data.detail ? `${data.error || 'Error al guardar'}: ${data.detail}` : (data.error || 'Error al guardar')
-        throw new Error(msg)
+      if (registroId && puedeEditar) {
+        const res = await fetch(`${API}/api/moper/${registroId}`, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json', ...authHeaders() },
+          body: JSON.stringify(payload),
+        })
+        const data = await res.json()
+        if (!res.ok) {
+          const msg = data.detail ? `${data.error || 'Error al actualizar'}: ${data.detail}` : (data.error || 'Error al actualizar')
+          throw new Error(msg)
+        }
+        onGuardar(registroId, registro?.folio ?? data.folio ?? null)
+      } else {
+        const res = await fetch(`${API}/api/moper`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', ...authHeaders() },
+          body: JSON.stringify(payload),
+        })
+        const data = await res.json()
+        if (!res.ok) {
+          const msg = data.detail ? `${data.error || 'Error al guardar'}: ${data.detail}` : (data.error || 'Error al guardar')
+          throw new Error(msg)
+        }
+        onGuardar(data.id, data.folio ?? null)
       }
-      onGuardar(data.id, data.folio ?? null)
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Error al guardar')
     } finally {
@@ -102,7 +143,7 @@ export function FormularioMoper({ onGuardar, registroId, registro }: FormularioM
       {/* Sección A: Datos Generales */}
       <section className="border-2 border-oxford-300 rounded-lg p-3 sm:p-4 bg-white">
         <h2 className="text-sm sm:text-base font-bold text-black border-b border-oxford-300 pb-2 mb-3 sm:mb-4">A. Datos Generales</h2>
-        {(registro?.creado_por != null || registro?.solicitado_por != null || registro?.created_at || registro?.fecha_llenado != null || registro?.fecha_registro != null) && (
+        {(registro && registroId && !puedeEditar) && (registro?.creado_por != null || registro?.solicitado_por != null || registro?.created_at || registro?.fecha_llenado != null || registro?.fecha_registro != null) && (
           <div className="grid gap-3 grid-cols-2 sm:grid-cols-3 mb-4 p-3 bg-oxford-50 rounded border border-oxford-200">
             <div>
               <span className="text-xs font-medium text-oxford-600">Creado por:</span>
@@ -129,7 +170,7 @@ export function FormularioMoper({ onGuardar, registroId, registro }: FormularioM
           </div>
         )}
         <div className="grid gap-4 sm:grid-cols-2">
-          {!registro && (
+          {(!registro || (registroId && puedeEditar)) && (
             <>
               <div>
                 <label className="block text-sm font-medium text-oxford-800 mb-1">Creado por</label>
@@ -151,24 +192,28 @@ export function FormularioMoper({ onGuardar, registroId, registro }: FormularioM
                   className="w-full border-2 border-oxford-300 rounded px-3 py-2 bg-white text-black placeholder-oxford-400"
                 />
               </div>
+              {registroId && registro?.fecha_llenado != null && (
+                <div>
+                  <label className="block text-sm font-medium text-oxford-800 mb-1">Fecha de llenado</label>
+                  <input
+                    type="date"
+                    value={toInputDate(registro.fecha_llenado) ?? ''}
+                    readOnly
+                    className="w-full border-2 border-oxford-200 rounded px-3 py-2 bg-oxford-100 text-black"
+                  />
+                  <p className="text-xs text-oxford-600 mt-0.5">Se asignó automáticamente al crear el registro.</p>
+                </div>
+              )}
+              {!registroId && (
+                <div className="text-sm text-oxford-600">La fecha de llenado se asignará automáticamente al guardar.</div>
+              )}
               <div>
-                <label className="block text-sm font-medium text-oxford-800 mb-1">Fecha de llenado (texto libre)</label>
+                <label className="block text-sm font-medium text-oxford-800 mb-1">Fecha de registro</label>
                 <input
-                  type="text"
-                  value={fechaLlenado}
-                  onChange={(e) => setFechaLlenado(e.target.value)}
-                  placeholder="Ej: 15/01/2025 o Enero 2025"
-                  className="w-full border-2 border-oxford-300 rounded px-3 py-2 bg-white text-black placeholder-oxford-400"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-oxford-800 mb-1">Fecha de registro (texto libre)</label>
-                <input
-                  type="text"
+                  type="date"
                   value={fechaRegistro}
                   onChange={(e) => setFechaRegistro(e.target.value)}
-                  placeholder="Ej: 20/01/2025"
-                  className="w-full border-2 border-oxford-300 rounded px-3 py-2 bg-white text-black placeholder-oxford-400"
+                  className="w-full border-2 border-oxford-300 rounded px-3 py-2 bg-white text-black"
                 />
               </div>
             </>
@@ -322,14 +367,14 @@ export function FormularioMoper({ onGuardar, registroId, registro }: FormularioM
       </section>
 
       {error && <p className="text-red-600 text-sm">{error}</p>}
-      {!registroId && (
+      {puedeEditar && (
         <button
           type="button"
           onClick={guardar}
           disabled={guardando}
           className="w-full sm:w-auto px-6 py-3 min-h-[44px] bg-black text-white rounded border-2 border-black font-medium hover:bg-oxford-800 disabled:opacity-50 touch-manipulation"
         >
-          {guardando ? 'Guardando...' : 'Guardar registro'}
+          {guardando ? (registroId ? 'Actualizando...' : 'Guardando...') : (registroId ? 'Actualizar registro' : 'Guardar registro')}
         </button>
       )}
     </div>
