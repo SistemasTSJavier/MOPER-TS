@@ -93,8 +93,28 @@ export default function App() {
   }, [registroCompleto])
 
   const actualizarFolioPreview = useCallback(() => {
-    fetch(`${API}/api/folios/preview`).then((r) => r.json()).then((d) => d.folio && setFolioPreview(d.folio)).catch(() => {})
-  }, [])
+    fetch(`${API}/api/folios/preview`, { headers: authHeaders() })
+      .then((r) => r.json())
+      .then((d) => d.folio && setFolioPreview(d.folio))
+      .catch(() => {})
+  }, [authHeaders])
+
+  const ajustarFolio = useCallback(
+    (delta: number) => {
+      fetch(`${API}/api/folios/sequence`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json', ...authHeaders() },
+        body: JSON.stringify({ delta }),
+      })
+        .then((res) => res.json().then((d) => ({ ok: res.ok, data: d })))
+        .then(({ ok, data }) => {
+          if (data.folio) setFolioPreview(data.folio)
+          if (!ok) throw new Error(data.error || 'Error')
+        })
+        .catch((e) => alert(e instanceof Error ? e.message : 'Error al ajustar folio'))
+    },
+    [authHeaders]
+  )
 
   const onNuevoRegistro = useCallback(() => {
     setRegistroId(null)
@@ -150,7 +170,7 @@ export default function App() {
             Movimiento de Personal (MOPER)
           </p>
           <div className="border-2 border-oxford-300 rounded-lg p-3 sm:p-4 mb-4 bg-oxford-50/30 space-y-2">
-          <div>
+          <div className="flex flex-wrap items-center gap-2">
             <span className="text-oxford-600 text-sm font-medium">Folio: </span>
             <span className="font-mono font-semibold text-black">
               {registroCompleto?.folio ?? folioPreview}
@@ -158,6 +178,26 @@ export default function App() {
                 <span className="text-oxford-500 font-normal"> (asignado al firmar conformidad)</span>
               )}
             </span>
+            {(user?.rol === 'admin' || user?.rol === 'gerente') && !registroCompleto?.folio && (
+              <span className="inline-flex items-center gap-0.5 ml-2">
+                <button
+                  type="button"
+                  onClick={() => ajustarFolio(1)}
+                  className="p-1.5 border-2 border-oxford-300 rounded text-oxford-800 hover:bg-oxford-100 font-bold leading-none"
+                  title="Subir número del próximo folio"
+                >
+                  ▲
+                </button>
+                <button
+                  type="button"
+                  onClick={() => ajustarFolio(-1)}
+                  className="p-1.5 border-2 border-oxford-300 rounded text-oxford-800 hover:bg-oxford-100 font-bold leading-none"
+                  title="Bajar número del próximo folio"
+                >
+                  ▼
+                </button>
+              </span>
+            )}
           </div>
           {registroCompleto?.codigo_acceso && (
             <div className="text-sm">

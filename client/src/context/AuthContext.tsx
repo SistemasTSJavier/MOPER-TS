@@ -80,9 +80,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setLoading(false)
       return
     }
+    let cancelled = false
+    const timeout = setTimeout(() => {
+      if (cancelled) return
+      setLoading(false)
+      setToken(null)
+      setUser(null)
+      localStorage.removeItem(TOKEN_KEY)
+    }, 12000)
     fetch(`${API}/api/auth/me`, { headers: { Authorization: `Bearer ${t}` } })
       .then((r) => r.json())
       .then((data) => {
+        if (cancelled) return
         if (data.user) {
           setUser(data.user)
           setToken(t)
@@ -93,11 +102,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         }
       })
       .catch(() => {
-        setToken(null)
-        setUser(null)
-        localStorage.removeItem(TOKEN_KEY)
+        if (!cancelled) {
+          setToken(null)
+          setUser(null)
+          localStorage.removeItem(TOKEN_KEY)
+        }
       })
-      .finally(() => setLoading(false))
+      .finally(() => {
+        if (!cancelled) setLoading(false)
+        clearTimeout(timeout)
+      })
+    return () => {
+      cancelled = true
+      clearTimeout(timeout)
+    }
   }, [])
 
   const login = useCallback(async (email: string, password: string) => {

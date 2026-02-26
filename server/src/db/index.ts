@@ -68,6 +68,27 @@ export async function getFolioPreview(): Promise<string> {
   return `SPT/No. ${String(next).padStart(4, '0')}/MOP`
 }
 
+/** Ajusta el número base del folio (delta: +1 sube el próximo folio, -1 lo baja). Mínimo last_number 0 (próximo 0001). */
+export async function adjustFolioSequence(delta: number): Promise<string> {
+  const client = await getPool().connect()
+  try {
+    await client.query('BEGIN')
+    const res = await client.query<{ last_number: number }>(
+      `UPDATE folio_sequence SET last_number = GREATEST(0, last_number + $1) WHERE id = 1 RETURNING last_number`,
+      [delta]
+    )
+    const last = res.rows[0]?.last_number ?? 279
+    await client.query('COMMIT')
+    const next = last + 1
+    return `SPT/No. ${String(next).padStart(4, '0')}/MOP`
+  } catch (e) {
+    await client.query('ROLLBACK')
+    throw e
+  } finally {
+    client.release()
+  }
+}
+
 /** Añade columnas de texto libre si no existen (migración para instalaciones ya existentes). */
 export async function ensureTextColumns(): Promise<void> {
   const alters = [
