@@ -45,6 +45,30 @@ export interface RegistroMoper {
   codigo_acceso?: string | null
 }
 
+/** Cuerpo del correo prellenado: fecha de llenado, oficial, servicio, puesto, sueldo, motivo, quien solicita. */
+export function buildMailtoBody(registro: RegistroMoper): string {
+  const appUrl = typeof window !== 'undefined' ? window.location.origin + window.location.pathname : ''
+  const line = (label: string, value: string | number | null | undefined) =>
+    value != null && String(value).trim() !== '' ? `${label}: ${String(value).trim()}` : null
+  const sueldoActual = registro.sueldo_actual != null ? `$ ${Number(registro.sueldo_actual).toLocaleString('es-MX')}` : '-'
+  const sueldoNuevo = registro.sueldo_nuevo != null ? `$ ${Number(registro.sueldo_nuevo).toLocaleString('es-MX')}` : '-'
+  const lines = [
+    'Movimiento de Personal (MOPER)',
+    '',
+    line('Folio', registro.folio),
+    line('Fecha de llenado', registro.fecha_llenado || null),
+    line('Nombre del oficial', registro.oficial_nombre),
+    line('Servicio', registro.servicio_actual_nombre && registro.servicio_nuevo_nombre ? `${registro.servicio_actual_nombre} → ${registro.servicio_nuevo_nombre}` : (registro.servicio_nuevo_nombre || registro.servicio_actual_nombre || null)),
+    line('Puesto', registro.puesto_actual_nombre && registro.puesto_nuevo_nombre ? `${registro.puesto_actual_nombre} → ${registro.puesto_nuevo_nombre}` : (registro.puesto_nuevo_nombre || registro.puesto_actual_nombre || null)),
+    line('Sueldo', sueldoActual !== '-' || sueldoNuevo !== '-' ? `${sueldoActual} → ${sueldoNuevo}` : null),
+    line('Motivo', registro.motivo),
+    line('Quien solicita', registro.solicitado_por),
+    registro.codigo_acceso ? `\nCódigo de acceso para firma del oficial: ${registro.codigo_acceso}` : null,
+    appUrl ? `\nApp MOPER: ${appUrl}` : null,
+  ].filter(Boolean)
+  return lines.join('\r\n')
+}
+
 export default function App() {
   const { user, accesoPorCodigo, loading, authHeaders } = useAuth()
   const [folioPreview, setFolioPreview] = useState('SPT/No. 0280/MOP')
@@ -124,20 +148,7 @@ export default function App() {
 
   const mailtoHref = useCallback((registro: RegistroMoper) => {
     const subject = `MOPER - ${registro.folio || 'Movimiento de Personal'}`
-    const appUrl = typeof window !== 'undefined' ? window.location.origin + window.location.pathname : ''
-    const line = (label: string, value: string | number | null | undefined) =>
-      value != null && String(value).trim() !== '' ? `${label}: ${String(value).trim()}` : null
-    const lines = [
-      line('Folio', registro.folio),
-      line('Oficial', registro.oficial_nombre),
-      line('CURP', registro.curp),
-      line('Servicio actual → nuevo', registro.servicio_actual_nombre && registro.servicio_nuevo_nombre ? `${registro.servicio_actual_nombre} → ${registro.servicio_nuevo_nombre}` : null),
-      line('Puesto actual → nuevo', registro.puesto_actual_nombre && registro.puesto_nuevo_nombre ? `${registro.puesto_actual_nombre} → ${registro.puesto_nuevo_nombre}` : null),
-      line('Motivo', registro.motivo),
-      registro.codigo_acceso ? `\nCódigo de acceso para firma del oficial: ${registro.codigo_acceso}` : null,
-      appUrl ? `\n\nApp MOPER: ${appUrl}` : null,
-    ].filter(Boolean)
-    const body = lines.join('\r\n')
+    const body = buildMailtoBody(registro)
     return `mailto:?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`
   }, [])
 

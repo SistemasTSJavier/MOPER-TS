@@ -4,6 +4,7 @@ import { es } from 'date-fns/locale'
 import { useAuth } from '../context/AuthContext'
 import { FirmasWorkflow } from './FirmasWorkflow'
 import { API } from '../api'
+import { buildMailtoBody } from '../App'
 
 export function VistaPorCodigo() {
   const { accesoPorCodigo, clearCodigoAcceso, setRegistroPorCodigo } = useAuth()
@@ -58,18 +59,7 @@ export function VistaPorCodigo() {
         </div>
         <div className="mb-4">
           <a
-            href={`mailto:?subject=${encodeURIComponent(`MOPER - ${registro.folio || 'Movimiento de Personal'}`)}&body=${encodeURIComponent(
-              [
-                `Folio: ${registro.folio || '—'}`,
-                `Oficial: ${registro.oficial_nombre || '—'}`,
-                `CURP: ${registro.curp || '—'}`,
-                `Servicio: ${registro.servicio_actual_nombre || '—'} → ${registro.servicio_nuevo_nombre || '—'}`,
-                `Puesto: ${registro.puesto_actual_nombre || '—'} → ${registro.puesto_nuevo_nombre || '—'}`,
-                `Motivo: ${registro.motivo || '—'}`,
-                '',
-                typeof window !== 'undefined' ? `App MOPER: ${window.location.origin}${window.location.pathname}` : '',
-              ].filter(Boolean).join('\r\n')
-            )}`}
+            href={`mailto:?subject=${encodeURIComponent(`MOPER - ${registro.folio || 'Movimiento de Personal'}`)}&body=${encodeURIComponent(buildMailtoBody(registro))}`}
             className="inline-flex items-center justify-center px-4 py-2 border-2 border-oxford-400 rounded font-medium text-oxford-800 hover:bg-oxford-100"
           >
             Enviar por correo
