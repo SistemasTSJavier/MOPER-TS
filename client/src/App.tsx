@@ -8,7 +8,7 @@ import { LoginPanel } from './components/LoginPanel'
 import { VistaPorCodigo } from './components/VistaPorCodigo'
 import { useAuth } from './context/AuthContext'
 import { API } from './api'
-import { generarPDF, loadLogoAsDataUrl } from './utils/pdf'
+import { generarPDF, loadLogoAsDataUrl, loadPlantillaAsDataUrl } from './utils/pdf'
 
 export interface RegistroMoper {
   id?: number
@@ -56,7 +56,7 @@ export function buildMailtoBody(registro: any): string {
     'Movimiento de Personal (MOPER)',
     '',
     line('Folio', registro.folio),
-    line('Fecha de llenado', registro.fecha_llenado || null),
+    line('Fecha de llenado', registro.fecha_llenado || registro.created_at || null),
     line('Nombre del oficial', registro.oficial_nombre),
     line('Servicio', registro.servicio_actual_nombre && registro.servicio_nuevo_nombre ? `${registro.servicio_actual_nombre} → ${registro.servicio_nuevo_nombre}` : (registro.servicio_nuevo_nombre || registro.servicio_actual_nombre || null)),
     line('Puesto', registro.puesto_actual_nombre && registro.puesto_nuevo_nombre ? `${registro.puesto_actual_nombre} → ${registro.puesto_nuevo_nombre}` : (registro.puesto_nuevo_nombre || registro.puesto_actual_nombre || null)),
@@ -113,7 +113,9 @@ export default function App() {
 
   const onGenerarPDF = useCallback(() => {
     if (!registroCompleto) return
-    loadLogoAsDataUrl().then((logo) => generarPDF(registroCompleto, logo))
+    Promise.all([loadLogoAsDataUrl(), loadPlantillaAsDataUrl()]).then(([logo, plantilla]) =>
+      generarPDF(registroCompleto, logo, plantilla)
+    )
   }, [registroCompleto])
 
   const actualizarFolioPreview = useCallback(() => {

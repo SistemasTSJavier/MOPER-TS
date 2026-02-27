@@ -23,27 +23,33 @@ const FOOTER_LEGAL = [
 const A4_W_MM = 210
 const A4_H_MM = 297
 
-/** Logo como marca de agua de fondo: tamaño grande, centrado, opacidad baja. */
-const WATERMARK_LOGO_W_MM = 140
+/** Logo como marca de agua de fondo: tamaño grande (+40%), centrado, opacidad baja. */
+const WATERMARK_LOGO_W_MM = 196
 const WATERMARK_LOGO_ASPECT_RATIO = 2.5
 const WATERMARK_LOGO_H_MM = WATERMARK_LOGO_W_MM / WATERMARK_LOGO_ASPECT_RATIO
 const WATERMARK_OPACITY = 0.14
 
-/** Carga la imagen del logo y la devuelve como data URL para el PDF (prueba image.png y logo.png). */
+const tryLoadImage = (url: string) =>
+  fetch(url)
+    .then((r) => (r.ok ? r.blob() : Promise.reject()))
+    .then(
+      (blob) =>
+        new Promise<string | null>((resolve) => {
+          const reader = new FileReader()
+          reader.onloadend = () => resolve(reader.result as string)
+          reader.onerror = () => resolve(null)
+          reader.readAsDataURL(blob)
+        })
+    )
+
+/** Carga la plantilla (encabezado/footer) para el PDF. */
+export function loadPlantillaAsDataUrl(): Promise<string | null> {
+  return tryLoadImage('/plantilla.png').catch(() => null)
+}
+
+/** Carga la imagen del logo para el PDF (prueba image.png y logo.png). */
 export function loadLogoAsDataUrl(): Promise<string | null> {
-  const tryLoad = (url: string) =>
-    fetch(url)
-      .then((r) => (r.ok ? r.blob() : Promise.reject()))
-      .then(
-        (blob) =>
-          new Promise<string | null>((resolve) => {
-            const reader = new FileReader()
-            reader.onloadend = () => resolve(reader.result as string)
-            reader.onerror = () => resolve(null)
-            reader.readAsDataURL(blob)
-          })
-      )
-  return tryLoad('/image.png').catch(() => tryLoad('/logo.png').catch(() => null))
+  return tryLoadImage('/image.png').catch(() => tryLoadImage('/logo.png').catch(() => null))
 }
 
 /** Dibuja un recuadro (borde gris). */
@@ -95,7 +101,11 @@ function drawTwoColumnTable(
   return yy
 }
 
-export function generarPDF(registro: RegistroMoper, logoDataUrl?: string | null) {
+export function generarPDF(
+  registro: RegistroMoper,
+  logoDataUrl?: string | null,
+  plantillaDataUrl?: string | null
+) {
   const doc = new jsPDF({ unit: 'mm', format: 'a4' })
   const pageW = A4_W_MM
   const pageH = A4_H_MM
@@ -103,7 +113,16 @@ export function generarPDF(registro: RegistroMoper, logoDataUrl?: string | null)
   const contentW = pageW - 2 * margin
   const pad = 4
 
-  // Marca de agua: logo de fondo, centrado, transparente (gota de agua)
+  // 1. Plantilla de fondo (encabezado y footer) a página completa, simétrica
+  if (plantillaDataUrl && plantillaDataUrl.startsWith('data:image/')) {
+    try {
+      doc.addImage(plantillaDataUrl, 'PNG', 0, 0, pageW, pageH)
+    } catch {
+      // Si falla la plantilla, se omite
+    }
+  }
+
+  // 2. Marca de agua: logo de fondo, centrado (+40%), simétrico, transparente
   if (logoDataUrl && logoDataUrl.startsWith('data:image/')) {
     try {
       const xLogo = (pageW - WATERMARK_LOGO_W_MM) / 2
@@ -134,10 +153,8 @@ export function generarPDF(registro: RegistroMoper, logoDataUrl?: string | null)
   const docRows: [string, string][] = [
     ['Folio', folio],
     ['Creado por', registro.creado_por || '-'],
-    ['Fecha de creación', registro.created_at ? format(new Date(registro.created_at), "d 'de' MMMM yyyy, HH:mm", { locale: es }) : '-'],
+    ['Fecha de llenado', registro.created_at ? format(new Date(registro.created_at), "d 'de' MMMM yyyy, HH:mm", { locale: es }) : '-'],
     ['Solicitado por', registro.solicitado_por || '-'],
-    ['Fecha de llenado', registro.fecha_llenado || '-'],
-    ['Fecha de registro', registro.fecha_registro || '-'],
   ]
   y = drawTwoColumnTable(doc, margin, y, contentW, 'Datos del documento', ['Campo', 'Valor'], docRows, pad)
   y += 6

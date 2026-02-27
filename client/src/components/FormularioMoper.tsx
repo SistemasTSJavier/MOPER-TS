@@ -43,7 +43,6 @@ export function FormularioMoper({ onGuardar, registroId, registro, puedeEditar =
   const [motivo, setMotivo] = useState('')
   const [creadoPor, setCreadoPor] = useState('')
   const [solicitadoPor, setSolicitadoPor] = useState('')
-  const [fechaRegistro, setFechaRegistro] = useState('')
   const [guardando, setGuardando] = useState(false)
   const [error, setError] = useState('')
 
@@ -68,7 +67,6 @@ export function FormularioMoper({ onGuardar, registroId, registro, puedeEditar =
       setMotivo(registro.motivo ?? '')
       setCreadoPor(registro.creado_por ?? '')
       setSolicitadoPor(registro.solicitado_por ?? '')
-      setFechaRegistro(registro.fecha_registro ?? '')
     }
   }, [registro, registroId, puedeEditar])
 
@@ -86,8 +84,6 @@ export function FormularioMoper({ onGuardar, registroId, registro, puedeEditar =
     motivo: motivo.trim(),
     creado_por: creadoPor.trim() || undefined,
     solicitado_por: solicitadoPor.trim() || undefined,
-    // fecha_llenado: se asigna automáticamente en el servidor al crear; no se envía
-    fecha_registro: fechaRegistro.trim() || undefined,
   }
 
   const guardar = async () => {
@@ -143,14 +139,14 @@ export function FormularioMoper({ onGuardar, registroId, registro, puedeEditar =
       {/* Sección A: Datos Generales */}
       <section className="border-2 border-oxford-300 rounded-lg p-3 sm:p-4 bg-white">
         <h2 className="text-sm sm:text-base font-bold text-black border-b border-oxford-300 pb-2 mb-3 sm:mb-4">A. Datos Generales</h2>
-        {(registro && registroId && !puedeEditar) && (registro?.creado_por != null || registro?.solicitado_por != null || registro?.created_at || registro?.fecha_llenado != null || registro?.fecha_registro != null) && (
+        {(registro && registroId && !puedeEditar) && (registro?.creado_por != null || registro?.solicitado_por != null || registro?.created_at) && (
           <div className="grid gap-3 grid-cols-2 sm:grid-cols-3 mb-4 p-3 bg-oxford-50 rounded border border-oxford-200">
             <div>
               <span className="text-xs font-medium text-oxford-600">Creado por:</span>
               <p className="text-sm text-black">{registro?.creado_por || '-'}</p>
             </div>
             <div>
-              <span className="text-xs font-medium text-oxford-600">Fecha de creación:</span>
+              <span className="text-xs font-medium text-oxford-600">Fecha de llenado:</span>
               <p className="text-sm text-black">
                 {registro?.created_at ? format(new Date(registro.created_at), "d 'de' MMMM yyyy, HH:mm", { locale: es }) : '-'}
               </p>
@@ -158,14 +154,6 @@ export function FormularioMoper({ onGuardar, registroId, registro, puedeEditar =
             <div>
               <span className="text-xs font-medium text-oxford-600">Solicitado por:</span>
               <p className="text-sm text-black">{registro?.solicitado_por || '-'}</p>
-            </div>
-            <div>
-              <span className="text-xs font-medium text-oxford-600">Fecha de llenado:</span>
-              <p className="text-sm text-black">{registro?.fecha_llenado || '-'}</p>
-            </div>
-            <div>
-              <span className="text-xs font-medium text-oxford-600">Fecha de registro:</span>
-              <p className="text-sm text-black">{registro?.fecha_registro || '-'}</p>
             </div>
           </div>
         )}
@@ -190,30 +178,6 @@ export function FormularioMoper({ onGuardar, registroId, registro, puedeEditar =
                   onChange={(e) => setSolicitadoPor(e.target.value)}
                   placeholder="Nombre de quien solicita"
                   className="w-full border-2 border-oxford-300 rounded px-3 py-2 bg-white text-black placeholder-oxford-400"
-                />
-              </div>
-              {registroId && registro?.fecha_llenado != null && (
-                <div>
-                  <label className="block text-sm font-medium text-oxford-800 mb-1">Fecha de llenado</label>
-                  <input
-                    type="date"
-                    value={toInputDate(registro.fecha_llenado) ?? ''}
-                    readOnly
-                    className="w-full border-2 border-oxford-200 rounded px-3 py-2 bg-oxford-100 text-black"
-                  />
-                  <p className="text-xs text-oxford-600 mt-0.5">Se asignó automáticamente al crear el registro.</p>
-                </div>
-              )}
-              {!registroId && (
-                <div className="text-sm text-oxford-600">La fecha de llenado se asignará automáticamente al guardar.</div>
-              )}
-              <div>
-                <label className="block text-sm font-medium text-oxford-800 mb-1">Fecha de registro</label>
-                <input
-                  type="date"
-                  value={fechaRegistro}
-                  onChange={(e) => setFechaRegistro(e.target.value)}
-                  className="w-full border-2 border-oxford-300 rounded px-3 py-2 bg-white text-black"
                 />
               </div>
             </>
