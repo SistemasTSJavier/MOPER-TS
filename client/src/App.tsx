@@ -46,7 +46,7 @@ export interface RegistroMoper {
 }
 
 /** Cuerpo del correo prellenado: fecha de llenado, oficial, servicio, puesto, sueldo, motivo, quien solicita. */
-export function buildMailtoBody(registro: RegistroMoper): string {
+export function buildMailtoBody(registro: any): string {
   const appUrl = typeof window !== 'undefined' ? window.location.origin + window.location.pathname : ''
   const line = (label: string, value: string | number | null | undefined) =>
     value != null && String(value).trim() !== '' ? `${label}: ${String(value).trim()}` : null

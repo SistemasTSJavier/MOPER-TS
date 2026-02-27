@@ -55,7 +55,6 @@ function drawBox(doc: jsPDF, x: number, y: number, w: number, h: number) {
 export function generarPDF(registro: RegistroMoper, logoDataUrl?: string | null) {
   const doc = new jsPDF({ unit: 'mm', format: 'a4' })
   const pageW = A4_W_MM
-  const pageH = A4_H_MM
   const margin = 18
   const contentW = pageW - 2 * margin
   let y = margin
@@ -147,7 +146,7 @@ export function generarPDF(registro: RegistroMoper, logoDataUrl?: string | null)
     ['Sueldo Mensual', registro.sueldo_actual != null ? `$ ${Number(registro.sueldo_actual).toLocaleString('es-MX')}` : '-', registro.sueldo_nuevo != null ? `$ ${Number(registro.sueldo_nuevo).toLocaleString('es-MX')}` : '-'],
     ['Motivo', '-', registro.motivo || '-'],
   ]
-  rows.forEach(([campo, actual, nuevo], idx) => {
+  rows.forEach(([campo, actual, nuevo]) => {
     doc.text(campo, margin + pad, y + 4)
     doc.text(actual, margin + colW + pad, y + 4)
     doc.text(nuevo, margin + 2 * colW + pad, y + 4)
