@@ -30,7 +30,7 @@ const WATERMARK_OPACITY = 0.14
 
 /** Con plantilla: margen superior e inferior mayores para no solapar encabezado/pie de la plantilla. */
 const CONTENT_TOP_WITH_PLANTILLA_MM = 38
-const CONTENT_FOOTER_FROM_BOTTOM_MM = 32
+const CONTENT_FOOTER_FROM_BOTTOM_MM = 42
 
 const tryLoadImage = (url: string) =>
   fetch(url)
@@ -292,7 +292,7 @@ export function generarPDF(
   })
   y = tablaFirmasY + 2 * firmaRowH
 
-  const footerY = A4_H_MM - (hasPlantilla ? CONTENT_FOOTER_FROM_BOTTOM_MM : 28)
+  const footerY = A4_H_MM - (hasPlantilla ? CONTENT_FOOTER_FROM_BOTTOM_MM : 38)
   doc.setFont('helvetica', 'normal')
   doc.setFontSize(7)
   FOOTER_LEGAL.forEach((line, i) => {
