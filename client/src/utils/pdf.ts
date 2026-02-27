@@ -23,10 +23,11 @@ const FOOTER_LEGAL = [
 const A4_W_MM = 210
 const A4_H_MM = 297
 
-/** Logo en encabezado: ancho (más amplio), relación aspecto width/height para no deformar (ej. 2.5 = logo horizontal). */
-const HEADER_LOGO_W_MM = 85
-const HEADER_LOGO_ASPECT_RATIO = 2.5 // ancho/alto → alto = ancho/2.5
-const HEADER_LOGO_H_MM = HEADER_LOGO_W_MM / HEADER_LOGO_ASPECT_RATIO
+/** Logo como marca de agua de fondo: tamaño grande, centrado, opacidad baja. */
+const WATERMARK_LOGO_W_MM = 140
+const WATERMARK_LOGO_ASPECT_RATIO = 2.5
+const WATERMARK_LOGO_H_MM = WATERMARK_LOGO_W_MM / WATERMARK_LOGO_ASPECT_RATIO
+const WATERMARK_OPACITY = 0.14
 
 /** Carga la imagen del logo y la devuelve como data URL para el PDF (prueba image.png y logo.png). */
 export function loadLogoAsDataUrl(): Promise<string | null> {
@@ -45,31 +46,78 @@ export function loadLogoAsDataUrl(): Promise<string | null> {
   return tryLoad('/image.png').catch(() => tryLoad('/logo.png').catch(() => null))
 }
 
-/** Dibuja un recuadro tipo tabla (borde) y opcionalmente línea inferior. */
+/** Dibuja un recuadro (borde gris). */
 function drawBox(doc: jsPDF, x: number, y: number, w: number, h: number) {
-  doc.setDrawColor(180, 180, 180)
-  doc.setLineWidth(0.3)
+  doc.setDrawColor(160, 160, 160)
+  doc.setLineWidth(0.25)
   doc.rect(x, y, w, h)
+}
+
+/** Dibuja una tabla de 2 columnas: título, fila de encabezado y filas de datos con cuadrícula. */
+function drawTwoColumnTable(
+  doc: jsPDF,
+  x: number,
+  y: number,
+  w: number,
+  title: string,
+  headers: [string, string],
+  rows: [string, string][],
+  pad: number
+): number {
+  const headerH = 7
+  const rowH = 6
+  const col1W = w * 0.38
+  let yy = y
+  doc.setFont('helvetica', 'bold')
+  doc.setFontSize(10)
+  doc.text(title, x + pad, yy + 4)
+  yy += 6
+  const tableTop = yy
+  doc.setFont('helvetica', 'bold')
+  doc.setFontSize(9)
+  doc.text(headers[0], x + pad, yy + 4)
+  doc.text(headers[1], x + col1W + pad, yy + 4)
+  yy += headerH
+  doc.setDrawColor(160, 160, 160)
+  doc.setLineWidth(0.25)
+  doc.line(x, yy, x + w, yy)
+  doc.line(x + col1W, tableTop, x + col1W, yy)
+  doc.setFont('helvetica', 'normal')
+  doc.setFontSize(9)
+  rows.forEach(([label, value]) => {
+    doc.text(label, x + pad, yy + 4)
+    doc.text(value, x + col1W + pad, yy + 4)
+    doc.line(x, yy + rowH, x + w, yy + rowH)
+    doc.line(x + col1W, yy, x + col1W, yy + rowH)
+    yy += rowH
+  })
+  drawBox(doc, x, tableTop, w, yy - tableTop)
+  return yy
 }
 
 export function generarPDF(registro: RegistroMoper, logoDataUrl?: string | null) {
   const doc = new jsPDF({ unit: 'mm', format: 'a4' })
   const pageW = A4_W_MM
+  const pageH = A4_H_MM
   const margin = 18
   const contentW = pageW - 2 * margin
-  let y = margin
+  const pad = 4
 
-  // Logo en encabezado: amplio, centrado, proporción correcta (sin deformar)
+  // Marca de agua: logo de fondo, centrado, transparente (gota de agua)
   if (logoDataUrl && logoDataUrl.startsWith('data:image/')) {
     try {
-      const xLogo = (pageW - HEADER_LOGO_W_MM) / 2
-      doc.addImage(logoDataUrl, 'PNG', xLogo, y, HEADER_LOGO_W_MM, HEADER_LOGO_H_MM)
-      y += HEADER_LOGO_H_MM + 6
+      const xLogo = (pageW - WATERMARK_LOGO_W_MM) / 2
+      const yLogo = (pageH - WATERMARK_LOGO_H_MM) / 2
+      const gState = doc.GState({ opacity: WATERMARK_OPACITY })
+      doc.setGState(gState)
+      doc.addImage(logoDataUrl, 'PNG', xLogo, yLogo, WATERMARK_LOGO_W_MM, WATERMARK_LOGO_H_MM)
+      doc.setGState(doc.GState({ opacity: 1 }))
     } catch {
-      // Si falla el logo, se omite
+      // Si falla la marca de agua, se omite
     }
   }
 
+  let y = margin
   doc.setFont('helvetica', 'bold')
   doc.setFontSize(14)
   doc.text('TACTICAL', margin, y)
@@ -81,12 +129,9 @@ export function generarPDF(registro: RegistroMoper, logoDataUrl?: string | null)
   doc.text('Movimiento de Personal (MOPER)', pageW / 2, y, { align: 'center' })
   y += 8
 
-  // ——— Sección: Datos del documento (con recuadro tipo tabla) ———
-  const yDocStart = y
-  doc.setFont('helvetica', 'normal')
-  doc.setFontSize(9)
+  // ——— Tabla: Datos del documento ———
   const folio = registro.folio || 'SPT/No. ----/MOP'
-  const docLines = [
+  const docRows: [string, string][] = [
     ['Folio', folio],
     ['Creado por', registro.creado_por || '-'],
     ['Fecha de creación', registro.created_at ? format(new Date(registro.created_at), "d 'de' MMMM yyyy, HH:mm", { locale: es }) : '-'],
@@ -94,43 +139,27 @@ export function generarPDF(registro: RegistroMoper, logoDataUrl?: string | null)
     ['Fecha de llenado', registro.fecha_llenado || '-'],
     ['Fecha de registro', registro.fecha_registro || '-'],
   ]
-  const pad = 4
-  docLines.forEach(([label, value]) => {
-    doc.text(label + ': ' + value, margin + pad, y + 4)
-    y += 6
-  })
-  y += 4
-  drawBox(doc, margin, yDocStart - 2, contentW, y - yDocStart + 2)
+  y = drawTwoColumnTable(doc, margin, y, contentW, 'Datos del documento', ['Campo', 'Valor'], docRows, pad)
   y += 6
 
-  // ——— A. Datos Generales (con recuadro) ———
-  const yDatosStart = y
-  doc.setFont('helvetica', 'bold')
-  doc.setFontSize(10)
-  doc.text('A. Datos Generales', margin + pad, y + 4)
-  y += 8
-  doc.setFont('helvetica', 'normal')
-  doc.setFontSize(9)
-  const datosLines = [
-    ['Oficial', registro.oficial_nombre || ''],
-    ['CURP', registro.curp || ''],
+  // ——— Tabla: A. Datos Generales ———
+  const datosRows: [string, string][] = [
+    ['Oficial', registro.oficial_nombre || '-'],
+    ['CURP', registro.curp || '-'],
     ['Fecha de Ingreso', soloFecha(registro.fecha_ingreso)],
     ['Fecha Inicio Efectiva', soloFecha(registro.fecha_inicio_efectiva)],
   ]
-  datosLines.forEach(([label, value]) => {
-    doc.text(label + ': ' + value, margin + pad, y + 4)
-    y += 6
-  })
-  y += 4
-  drawBox(doc, margin, yDatosStart - 2, contentW, y - yDatosStart + 2)
+  y = drawTwoColumnTable(doc, margin, y, contentW, 'A. Datos Generales', ['Campo', 'Valor'], datosRows, pad)
   y += 6
 
-  // ——— B. Comparativa de Movimiento (tabla con líneas) ———
+  // ——— Tabla: B. Comparativa de Movimiento ———
   const yTablaStart = y
   doc.setFont('helvetica', 'bold')
   doc.setFontSize(10)
   doc.text('B. Comparativa de Movimiento', margin + pad, y + 4)
   y += 8
+  doc.setDrawColor(160, 160, 160)
+  doc.setLineWidth(0.25)
   const colW = contentW / 3
   const rowH = 7
   const headers = ['Campo', 'Situación ACTUAL', 'Situación NUEVA']
@@ -139,6 +168,8 @@ export function generarPDF(registro: RegistroMoper, logoDataUrl?: string | null)
   for (let i = 0; i < 3; i++) doc.text(headers[i], margin + i * colW + pad, y + 4)
   y += rowH
   doc.line(margin, y, pageW - margin, y)
+  doc.line(margin + colW, yTablaStart + 6, margin + colW, y)
+  doc.line(margin + 2 * colW, yTablaStart + 6, margin + 2 * colW, y)
   doc.setFont('helvetica', 'normal')
   const rows = [
     ['Servicio', registro.servicio_actual_nombre || '-', registro.servicio_nuevo_nombre || '-'],
@@ -156,55 +187,56 @@ export function generarPDF(registro: RegistroMoper, logoDataUrl?: string | null)
     doc.line(margin + 2 * colW, y, margin + 2 * colW, nextY)
     y = nextY
   })
-  doc.line(margin, yTablaStart - 2, margin, y)
-  doc.line(margin + colW, yTablaStart - 2, margin + colW, y)
-  doc.line(margin + 2 * colW, yTablaStart - 2, margin + 2 * colW, y)
-  doc.line(pageW - margin, yTablaStart - 2, pageW - margin, y)
-  doc.line(margin, yTablaStart - 2, pageW - margin, yTablaStart - 2)
-  doc.line(margin, y, pageW - margin, y)
+  drawBox(doc, margin, yTablaStart + 6, contentW, y - yTablaStart - 6)
   y += 6
 
-  // ——— Firmas (con recuadro) ———
-  const yFirmasStart = y
-  doc.setFont('helvetica', 'bold')
-  doc.setFontSize(10)
-  doc.text('Firmas', margin + pad, y + 4)
-  y += 6
-  doc.setFont('helvetica', 'normal')
-  doc.setFontSize(9)
+  // ——— Tabla: Firmas (2 columnas, 4 filas) ———
   const firmas = [
     { label: 'Firma de conformidad', nombre: registro.firma_conformidad_nombre, fecha: registro.firma_conformidad_at, imagen: registro.firma_conformidad_imagen },
     { label: 'Gerente RH', nombre: registro.firma_rh_nombre, fecha: registro.firma_rh_at, imagen: registro.firma_rh_imagen },
     { label: 'Gerente de Operaciones', nombre: registro.firma_gerente_nombre, fecha: registro.firma_gerente_at, imagen: registro.firma_gerente_imagen },
     { label: 'Centro de Control', nombre: registro.firma_control_nombre, fecha: registro.firma_control_at, imagen: registro.firma_control_imagen },
   ]
-  const sigW = (pageW - 2 * margin) / 2
+  const sigW = contentW / 2
   const imgH = 12
-  const imgW = 40
+  const imgW = 38
+  const yFirmasStart = y
+  doc.setFont('helvetica', 'bold')
+  doc.setFontSize(10)
+  doc.text('Firmas', margin + pad, y + 4)
+  y += 6
+  const firmaRowH = 22
+  const tablaFirmasY = yFirmasStart + 6
+  doc.setDrawColor(160, 160, 160)
+  doc.setLineWidth(0.25)
+  doc.line(margin, tablaFirmasY, margin + contentW, tablaFirmasY)
+  doc.line(margin, tablaFirmasY + firmaRowH, margin + contentW, tablaFirmasY + firmaRowH)
+  doc.line(margin + sigW, tablaFirmasY, margin + sigW, tablaFirmasY + 2 * firmaRowH)
+  drawBox(doc, margin, tablaFirmasY, contentW, 2 * firmaRowH)
   firmas.forEach((f, i) => {
     const col = i % 2
-    const x = margin + col * sigW + 2
-    if (col === 0) y += 6
+    const row = Math.floor(i / 2)
+    const x = margin + col * sigW + pad
+    const yy = tablaFirmasY + row * firmaRowH
     doc.setFont('helvetica', 'bold')
-    doc.text(f.label, x, y)
+    doc.setFontSize(9)
+    doc.text(f.label, x, yy + 5)
     doc.setFont('helvetica', 'normal')
     if (f.imagen) {
       try {
-        doc.addImage(f.imagen, 'PNG', x, y + 2, imgW, imgH)
-        doc.text(f.fecha ? format(new Date(f.fecha), "d MMM yyyy, HH:mm", { locale: es }) : '', x, y + 2 + imgH + 4)
+        doc.addImage(f.imagen, 'PNG', x, yy + 7, imgW, imgH)
+        doc.setFontSize(8)
+        doc.text(f.fecha ? format(new Date(f.fecha), "d MMM yyyy, HH:mm", { locale: es }) : '', x, yy + 7 + imgH + 3)
       } catch {
-        doc.text(f.nombre || '_________________', x, y + 5)
-        doc.text(f.fecha ? format(new Date(f.fecha), "d MMM yyyy, HH:mm", { locale: es }) : '_________________', x, y + 10)
+        doc.text(f.nombre || '_________________', x, yy + 12)
+        doc.text(f.fecha ? format(new Date(f.fecha), "d MMM yyyy, HH:mm", { locale: es }) : '_________________', x, yy + 17)
       }
     } else {
-      doc.text(f.nombre || '_________________', x, y + 5)
-      doc.text(f.fecha ? format(new Date(f.fecha), "d MMM yyyy, HH:mm", { locale: es }) : '_________________', x, y + 10)
+      doc.text(f.nombre || '_________________', x, yy + 12)
+      doc.text(f.fecha ? format(new Date(f.fecha), "d MMM yyyy, HH:mm", { locale: es }) : '_________________', x, yy + 17)
     }
-    if (col === 1) y += f.imagen ? 20 : 16
   })
-  if (firmas.length % 2 === 1) y += 20
-  y += 4
-  drawBox(doc, margin, yFirmasStart - 2, contentW, y - yFirmasStart + 2)
+  y = tablaFirmasY + 2 * firmaRowH
 
   const footerY = A4_H_MM - 18
   doc.setFont('helvetica', 'normal')
