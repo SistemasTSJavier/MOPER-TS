@@ -23,9 +23,14 @@ const FOOTER_LEGAL = [
 const A4_W_MM = 210
 const A4_H_MM = 297
 
-/** Logo de fondo: márgenes 10mm por lado (10-10-10-10), proporción real de la imagen (sin estirar). */
+/** Logo de fondo: márgenes 10mm, proporción real, escala 35% para que no tape contenido. */
 const WATERMARK_MARGIN_MM = 10
+const WATERMARK_SCALE = 0.35
 const WATERMARK_OPACITY = 0.14
+
+/** Con plantilla: margen superior e inferior mayores para no solapar encabezado/pie de la plantilla. */
+const CONTENT_TOP_WITH_PLANTILLA_MM = 38
+const CONTENT_FOOTER_FROM_BOTTOM_MM = 32
 
 const tryLoadImage = (url: string) =>
   fetch(url)
@@ -126,6 +131,8 @@ export function generarPDF(
   const doc = new jsPDF({ unit: 'mm', format: 'a4' })
   const pageW = A4_W_MM
   const pageH = A4_H_MM
+  const hasPlantilla = !!(plantillaDataUrl && plantillaDataUrl.startsWith('data:image/'))
+  const marginTop = hasPlantilla ? CONTENT_TOP_WITH_PLANTILLA_MM : 18
   const margin = 18
   const contentW = pageW - 2 * margin
   const pad = 4
@@ -157,8 +164,8 @@ export function generarPDF(
         const innerH = pageH - 2 * WATERMARK_MARGIN_MM
         const aspect = imgW / imgH
         const fitByWidth = innerW / innerH >= aspect
-        const logoW = fitByWidth ? innerW : innerH * aspect
-        const logoH = fitByWidth ? innerW / aspect : innerH
+        let logoW = (fitByWidth ? innerW : innerH * aspect) * WATERMARK_SCALE
+        let logoH = (fitByWidth ? innerW / aspect : innerH) * WATERMARK_SCALE
         const xLogo = WATERMARK_MARGIN_MM + (innerW - logoW) / 2
         const yLogo = WATERMARK_MARGIN_MM + (innerH - logoH) / 2
         const imgFormat = logoDataUrl.includes('image/jpeg') || logoDataUrl.includes('image/jpg') ? 'JPEG' : 'PNG'
@@ -172,13 +179,13 @@ export function generarPDF(
     }
   }
 
-  let y = margin
+  let y = marginTop
   doc.setFont('helvetica', 'bold')
   doc.setFontSize(11)
   doc.text('Movimiento de Personal (MOPER)', pageW / 2, y, { align: 'center' })
   y += 8
 
-  // ——— Tabla: Datos del documento ———
+  // ——— Tabla: Datos del documento (siempre debajo de encabezado/plantilla) ———
   const folio = registro.folio || 'SPT/No. ----/MOP'
   const docRows: [string, string][] = [
     ['Folio', folio],
@@ -285,7 +292,7 @@ export function generarPDF(
   })
   y = tablaFirmasY + 2 * firmaRowH
 
-  const footerY = A4_H_MM - 28
+  const footerY = A4_H_MM - (hasPlantilla ? CONTENT_FOOTER_FROM_BOTTOM_MM : 28)
   doc.setFont('helvetica', 'normal')
   doc.setFontSize(7)
   FOOTER_LEGAL.forEach((line, i) => {
