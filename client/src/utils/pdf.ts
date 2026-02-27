@@ -23,9 +23,8 @@ const FOOTER_LEGAL = [
 const A4_W_MM = 210
 const A4_H_MM = 297
 
-/** Logo de fondo: márgenes 10mm por lado (10-10-10-10), encajado en ese recuadro. */
+/** Logo de fondo: márgenes 10mm por lado (10-10-10-10), proporción real de la imagen (sin estirar). */
 const WATERMARK_MARGIN_MM = 10
-const WATERMARK_LOGO_ASPECT_RATIO = 2.5
 const WATERMARK_OPACITY = 0.14
 
 const tryLoadImage = (url: string) =>
@@ -147,32 +146,33 @@ export function generarPDF(
     }
   }
 
-  // 2. Logo de fondo: márgenes 10-10-10-10 mm, encajado en ese recuadro, centrado
+  // 2. Logo de fondo: márgenes 10-10-10-10 mm, proporción real (sin estirar), centrado
   if (logoDataUrl && logoDataUrl.startsWith('data:image/')) {
     try {
-      const innerW = pageW - 2 * WATERMARK_MARGIN_MM
-      const innerH = pageH - 2 * WATERMARK_MARGIN_MM
-      const logoW = innerW
-      const logoH = innerW / WATERMARK_LOGO_ASPECT_RATIO
-      const xLogo = WATERMARK_MARGIN_MM
-      const yLogo = WATERMARK_MARGIN_MM + (innerH - Math.min(logoH, innerH)) / 2
-      const h = Math.min(logoH, innerH)
-      const gState = doc.GState({ opacity: WATERMARK_OPACITY })
-      doc.setGState(gState)
-      doc.addImage(logoDataUrl, 'PNG', xLogo, yLogo, logoW, h)
-      doc.setGState(doc.GState({ opacity: 1 }))
+      const props = doc.getImageProperties(logoDataUrl)
+      const imgW = props.width
+      const imgH = props.height
+      if (imgW > 0 && imgH > 0) {
+        const innerW = pageW - 2 * WATERMARK_MARGIN_MM
+        const innerH = pageH - 2 * WATERMARK_MARGIN_MM
+        const aspect = imgW / imgH
+        const fitByWidth = innerW / innerH >= aspect
+        const logoW = fitByWidth ? innerW : innerH * aspect
+        const logoH = fitByWidth ? innerW / aspect : innerH
+        const xLogo = WATERMARK_MARGIN_MM + (innerW - logoW) / 2
+        const yLogo = WATERMARK_MARGIN_MM + (innerH - logoH) / 2
+        const imgFormat = logoDataUrl.includes('image/jpeg') || logoDataUrl.includes('image/jpg') ? 'JPEG' : 'PNG'
+        const gState = doc.GState({ opacity: WATERMARK_OPACITY })
+        doc.setGState(gState)
+        doc.addImage(logoDataUrl, imgFormat, xLogo, yLogo, logoW, logoH)
+        doc.setGState(doc.GState({ opacity: 1 }))
+      }
     } catch {
       // Si falla la marca de agua, se omite
     }
   }
 
   let y = margin
-  doc.setFont('helvetica', 'bold')
-  doc.setFontSize(14)
-  doc.text('TACTICAL', margin, y)
-  doc.text('SUPPORT', pageW - margin - doc.getTextWidth('SUPPORT'), y)
-  y += 10
-
   doc.setFont('helvetica', 'bold')
   doc.setFontSize(11)
   doc.text('Movimiento de Personal (MOPER)', pageW / 2, y, { align: 'center' })
@@ -285,7 +285,7 @@ export function generarPDF(
   })
   y = tablaFirmasY + 2 * firmaRowH
 
-  const footerY = A4_H_MM - 18
+  const footerY = A4_H_MM - 28
   doc.setFont('helvetica', 'normal')
   doc.setFontSize(7)
   FOOTER_LEGAL.forEach((line, i) => {
