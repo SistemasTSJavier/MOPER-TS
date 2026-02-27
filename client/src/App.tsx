@@ -113,9 +113,12 @@ export default function App() {
 
   const onGenerarPDF = useCallback(() => {
     if (!registroCompleto) return
-    Promise.all([loadLogoAsDataUrl(), loadPlantillaAsDataUrl()]).then(([logo, plantilla]) =>
+    Promise.all([loadLogoAsDataUrl(), loadPlantillaAsDataUrl()]).then(([logo, plantilla]) => {
+      if (!plantilla && typeof console !== 'undefined' && console.warn) {
+        console.warn('PDF: plantilla.png no se cargó. Colóquela en client/public/plantilla.png y recargue.')
+      }
       generarPDF(registroCompleto, logo, plantilla)
-    )
+    })
   }, [registroCompleto])
 
   const actualizarFolioPreview = useCallback(() => {

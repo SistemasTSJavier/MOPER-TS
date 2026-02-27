@@ -23,10 +23,9 @@ const FOOTER_LEGAL = [
 const A4_W_MM = 210
 const A4_H_MM = 297
 
-/** Logo como marca de agua de fondo: tamaño grande (+40%), centrado, opacidad baja. */
-const WATERMARK_LOGO_W_MM = 196
+/** Logo de fondo: márgenes 10mm por lado (10-10-10-10), encajado en ese recuadro. */
+const WATERMARK_MARGIN_MM = 10
 const WATERMARK_LOGO_ASPECT_RATIO = 2.5
-const WATERMARK_LOGO_H_MM = WATERMARK_LOGO_W_MM / WATERMARK_LOGO_ASPECT_RATIO
 const WATERMARK_OPACITY = 0.14
 
 const tryLoadImage = (url: string) =>
@@ -42,9 +41,28 @@ const tryLoadImage = (url: string) =>
         })
     )
 
-/** Carga la plantilla (encabezado/footer) para el PDF. */
+/** URLs absolutas para cargar imágenes desde public (evita fallos por rutas relativas). */
+function getPlantillaUrls(): string[] {
+  const urls: string[] = []
+  if (typeof window !== 'undefined' && window.location?.origin) {
+    const base = (typeof (import.meta as any).env?.BASE_URL === 'string')
+      ? (import.meta as any).env.BASE_URL.replace(/\/$/, '')
+      : ''
+    urls.push(`${window.location.origin}${base || ''}/plantilla.png`)
+    urls.push(`${window.location.origin}/plantilla.png`)
+  }
+  urls.push('/plantilla.png')
+  return urls
+}
+
+/** Carga la plantilla (encabezado/footer) para el PDF. Debe estar en client/public/plantilla.png */
 export function loadPlantillaAsDataUrl(): Promise<string | null> {
-  return tryLoadImage('/plantilla.png').catch(() => null)
+  const urls = getPlantillaUrls()
+  function tryNext(i: number): Promise<string | null> {
+    if (i >= urls.length) return Promise.resolve(null)
+    return tryLoadImage(urls[i]).catch(() => tryNext(i + 1))
+  }
+  return tryNext(0)
 }
 
 /** Carga la imagen del logo para el PDF (prueba image.png y logo.png). */
@@ -113,23 +131,35 @@ export function generarPDF(
   const contentW = pageW - 2 * margin
   const pad = 4
 
-  // 1. Plantilla de fondo (encabezado y footer) a página completa, simétrica
+  // 1. Plantilla de fondo (encabezado y footer) a página completa
   if (plantillaDataUrl && plantillaDataUrl.startsWith('data:image/')) {
     try {
-      doc.addImage(plantillaDataUrl, 'PNG', 0, 0, pageW, pageH)
-    } catch {
-      // Si falla la plantilla, se omite
+      const imgFormat = plantillaDataUrl.includes('image/jpeg') || plantillaDataUrl.includes('image/jpg') ? 'JPEG' : 'PNG'
+      doc.addImage(plantillaDataUrl, imgFormat, 0, 0, pageW, pageH, undefined, 'FAST')
+    } catch (e) {
+      try {
+        doc.addImage(plantillaDataUrl, 'PNG', 0, 0, pageW, pageH)
+      } catch {
+        if (typeof console !== 'undefined' && console.warn) {
+          console.warn('PDF: no se pudo dibujar la plantilla.', e)
+        }
+      }
     }
   }
 
-  // 2. Marca de agua: logo de fondo, centrado (+40%), simétrico, transparente
+  // 2. Logo de fondo: márgenes 10-10-10-10 mm, encajado en ese recuadro, centrado
   if (logoDataUrl && logoDataUrl.startsWith('data:image/')) {
     try {
-      const xLogo = (pageW - WATERMARK_LOGO_W_MM) / 2
-      const yLogo = (pageH - WATERMARK_LOGO_H_MM) / 2
+      const innerW = pageW - 2 * WATERMARK_MARGIN_MM
+      const innerH = pageH - 2 * WATERMARK_MARGIN_MM
+      const logoW = innerW
+      const logoH = innerW / WATERMARK_LOGO_ASPECT_RATIO
+      const xLogo = WATERMARK_MARGIN_MM
+      const yLogo = WATERMARK_MARGIN_MM + (innerH - Math.min(logoH, innerH)) / 2
+      const h = Math.min(logoH, innerH)
       const gState = doc.GState({ opacity: WATERMARK_OPACITY })
       doc.setGState(gState)
-      doc.addImage(logoDataUrl, 'PNG', xLogo, yLogo, WATERMARK_LOGO_W_MM, WATERMARK_LOGO_H_MM)
+      doc.addImage(logoDataUrl, 'PNG', xLogo, yLogo, logoW, h)
       doc.setGState(doc.GState({ opacity: 1 }))
     } catch {
       // Si falla la marca de agua, se omite
