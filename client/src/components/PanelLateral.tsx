@@ -50,13 +50,19 @@ const FIRMAS_PREVIEW = [
   { key: 'control', label: 'Centro de Control', colAt: 'firma_control_at' },
 ] as const
 
+const EMAILS_PUEDEN_CANCELAR = ['sistemas@tacticalsupport.com.mx', 'gterh@tacticalsupport.com.mx']
+
 export function PanelLateral({ registroIdActual, onSeleccionarRegistro, onNuevoRegistro, refreshTrigger = 0 }: PanelLateralProps) {
-  const { authHeaders } = useAuth()
+  const { authHeaders, user } = useAuth()
   const [resumen, setResumen] = useState<ResumenRegistros | null>(null)
   const [cargando, setCargando] = useState(true)
   const [errorApi, setErrorApi] = useState<string | null>(null)
   const [previewRegistro, setPreviewRegistro] = useState<RegistroCompleto | null>(null)
   const [cargandoPreview, setCargandoPreview] = useState(false)
+  const [menuAbiertoId, setMenuAbiertoId] = useState<number | null>(null)
+  const [cancelandoId, setCancelandoId] = useState<number | null>(null)
+
+  const puedeCancelar = !!user?.email && EMAILS_PUEDEN_CANCELAR.includes(user.email.trim().toLowerCase())
 
   const abrirPreview = useCallback((id: number, e: React.MouseEvent) => {
     e.stopPropagation()
@@ -68,6 +74,24 @@ export function PanelLateral({ registroIdActual, onSeleccionarRegistro, onNuevoR
       .catch(() => setPreviewRegistro(null))
       .finally(() => setCargandoPreview(false))
   }, [authHeaders])
+
+  const cancelarRegistro = useCallback((id: number, e: React.MouseEvent) => {
+    e.stopPropagation()
+    if (!puedeCancelar) return
+    setMenuAbiertoId(null)
+    setCancelandoId(id)
+    fetch(`${API}/api/moper/${id}/cancelar`, {
+      method: 'PATCH',
+      headers: authHeaders(),
+    })
+      .then((r) => r.json().then((d) => ({ ok: r.ok, data: d })))
+      .then(({ ok, data }) => {
+        if (ok) cargar()
+        else setErrorApi(data.error || 'Error al cancelar')
+      })
+      .catch(() => setErrorApi('Error de conexión'))
+      .finally(() => setCancelandoId(null))
+  }, [authHeaders, puedeCancelar])
 
   const cargar = () => {
     setCargando(true)
@@ -114,6 +138,13 @@ export function PanelLateral({ registroIdActual, onSeleccionarRegistro, onNuevoR
   useEffect(() => {
     if (refreshTrigger > 0) cargar()
   }, [refreshTrigger])
+
+  useEffect(() => {
+    if (menuAbiertoId == null) return
+    const cerrar = () => setMenuAbiertoId(null)
+    document.addEventListener('click', cerrar)
+    return () => document.removeEventListener('click', cerrar)
+  }, [menuAbiertoId])
 
   const pendientes = resumen?.pendientes ?? 0
   const aprobados = resumen?.aprobados ?? 0
@@ -177,6 +208,30 @@ export function PanelLateral({ registroIdActual, onSeleccionarRegistro, onNuevoR
                     >
                       Ver
                     </button>
+                    {puedeCancelar && (
+                      <div className="relative shrink-0">
+                        <button
+                          type="button"
+                          onClick={(e) => { e.stopPropagation(); setMenuAbiertoId(menuAbiertoId === r.id ? null : r.id) }}
+                          className="py-1 px-1.5 text-xs border border-oxford-300 rounded text-oxford-600 hover:bg-oxford-100"
+                          title="Más opciones"
+                          disabled={cancelandoId === r.id}
+                        >
+                          ⋮
+                        </button>
+                        {menuAbiertoId === r.id && (
+                          <div className="absolute right-0 top-full mt-0.5 z-10 bg-white border border-oxford-200 rounded shadow-lg py-1 min-w-[140px]">
+                            <button
+                              type="button"
+                              onClick={(e) => cancelarRegistro(r.id, e)}
+                              className="w-full text-left text-xs py-1.5 px-2 text-red-700 hover:bg-red-50"
+                            >
+                              Pasar a Cancelado
+                            </button>
+                          </div>
+                        )}
+                      </div>
+                    )}
                   </li>
                 ))}
               </ul>
@@ -198,11 +253,11 @@ export function PanelLateral({ registroIdActual, onSeleccionarRegistro, onNuevoR
             ) : (
               <ul className="space-y-1 flex-1 overflow-y-auto min-h-0">
                 {listAprob.map((r) => (
-                  <li key={r.id}>
+                  <li key={r.id} className="flex items-center gap-1">
                     <button
                       type="button"
                       onClick={() => onSeleccionarRegistro(r.id)}
-                      className={`w-full text-left text-xs py-1.5 px-2 rounded border truncate block ${
+                      className={`flex-1 min-w-0 text-left text-xs py-1.5 px-2 rounded border truncate block ${
                         registroIdActual === r.id
                           ? 'bg-green-100 border-green-400 font-medium'
                           : 'bg-white border-oxford-200 hover:bg-oxford-100'
@@ -217,6 +272,30 @@ export function PanelLateral({ registroIdActual, onSeleccionarRegistro, onNuevoR
                         </span>
                       )}
                     </button>
+                    {puedeCancelar && (
+                      <div className="relative shrink-0">
+                        <button
+                          type="button"
+                          onClick={(e) => { e.stopPropagation(); setMenuAbiertoId(menuAbiertoId === r.id ? null : r.id) }}
+                          className="py-1 px-1.5 text-xs border border-oxford-300 rounded text-oxford-600 hover:bg-oxford-100"
+                          title="Más opciones"
+                          disabled={cancelandoId === r.id}
+                        >
+                          ⋮
+                        </button>
+                        {menuAbiertoId === r.id && (
+                          <div className="absolute right-0 top-full mt-0.5 z-10 bg-white border border-oxford-200 rounded shadow-lg py-1 min-w-[140px]">
+                            <button
+                              type="button"
+                              onClick={(e) => cancelarRegistro(r.id, e)}
+                              className="w-full text-left text-xs py-1.5 px-2 text-red-700 hover:bg-red-50"
+                            >
+                              Pasar a Cancelado
+                            </button>
+                          </div>
+                        )}
+                      </div>
+                    )}
                   </li>
                 ))}
               </ul>

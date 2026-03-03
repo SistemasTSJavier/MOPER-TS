@@ -23,7 +23,7 @@ const SELECT_REGISTRO = `
     m.firma_rh_at, m.firma_rh_nombre, m.firma_rh_imagen,
     m.firma_gerente_at, m.firma_gerente_nombre, m.firma_gerente_imagen,
     m.firma_control_at, m.firma_control_nombre, m.firma_control_imagen,
-    m.completado
+    m.completado, m.cancelado
   FROM moper_registros m
   LEFT JOIN oficiales o ON o.id = m.oficial_id
   LEFT JOIN servicios sa ON sa.id = m.servicio_actual_id
@@ -183,6 +183,24 @@ router.patch('/:id', requireAuth, async (req: AuthRequest, res: Response) => {
   }
 })
 
+/** Pasar registro a Cancelado. Solo sistemas@tacticalsupport.com.mx y gterh@tacticalsupport.com.mx */
+router.patch('/:id/cancelar', requireAuth, async (req: AuthRequest, res: Response) => {
+  const email = (req.user?.email || '').trim().toLowerCase()
+  if (!EMAILS_PUEDEN_CANCELAR.includes(email)) {
+    return res.status(403).json({ error: 'Solo Sistemas o Gerencia RH pueden cancelar registros' })
+  }
+  const id = req.params.id
+  try {
+    const r = await query('UPDATE moper_registros SET cancelado = TRUE, updated_at = NOW() WHERE id = $1 RETURNING id', [id])
+    if (r.rows.length === 0) return res.status(404).json({ error: 'No encontrado' })
+    res.json({ ok: true })
+  } catch (e) {
+    const detail = pgErrorDetail(e)
+    console.error('PATCH /api/moper/:id/cancelar error:', e)
+    res.status(500).json({ error: 'Error al cancelar', ...(detail && { detail }) })
+  }
+})
+
 /** Acceso público por código: devuelve el registro para mostrar resumen y permitir firma de conformidad. */
 router.get('/codigo/:codigo', async (req: Request, res: Response) => {
   const codigo = (req.params.codigo || '').trim()
@@ -196,21 +214,24 @@ router.get('/codigo/:codigo', async (req: Request, res: Response) => {
   }
 })
 
+const EMAILS_PUEDEN_CANCELAR = ['sistemas@tacticalsupport.com.mx', 'gterh@tacticalsupport.com.mx']
+
 router.get('/', requireAuth, async (_req: Request, res: Response) => {
   try {
+    const noCancelado = 'AND (cancelado = FALSE OR cancelado IS NULL)'
     const pendientes = await query<{ count: string }>(
-      'SELECT COUNT(*) as count FROM moper_registros WHERE completado IS NOT TRUE'
+      `SELECT COUNT(*) as count FROM moper_registros WHERE completado IS NOT TRUE ${noCancelado}`
     )
     const aprobados = await query<{ count: string }>(
-      'SELECT COUNT(*) as count FROM moper_registros WHERE completado = TRUE'
+      `SELECT COUNT(*) as count FROM moper_registros WHERE completado = TRUE ${noCancelado}`
     )
     const listPend = await query(
       `SELECT id, folio, oficial_nombre, fecha_hora, completado
-       FROM moper_registros WHERE completado IS NOT TRUE ORDER BY id DESC LIMIT 50`
+       FROM moper_registros WHERE completado IS NOT TRUE ${noCancelado} ORDER BY id DESC LIMIT 50`
     )
     const listAprob = await query(
       `SELECT id, folio, oficial_nombre, fecha_hora, completado
-       FROM moper_registros WHERE completado = TRUE ORDER BY id DESC LIMIT 50`
+       FROM moper_registros WHERE completado = TRUE ${noCancelado} ORDER BY id DESC LIMIT 50`
     )
     res.json({
       pendientes: parseInt(pendientes.rows[0]?.count ?? '0', 10),

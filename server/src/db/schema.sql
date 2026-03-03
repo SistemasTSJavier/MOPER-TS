@@ -85,6 +85,7 @@ CREATE TABLE IF NOT EXISTS moper_registros (
   firma_control_nombre TEXT,
   firma_control_imagen TEXT,
   completado BOOLEAN DEFAULT FALSE,
+  cancelado BOOLEAN DEFAULT FALSE,
   created_at TIMESTAMPTZ DEFAULT NOW(),
   updated_at TIMESTAMPTZ DEFAULT NOW()
 );
