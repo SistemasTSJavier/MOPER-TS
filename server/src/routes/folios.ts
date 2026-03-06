@@ -20,9 +20,10 @@ router.get('/preview', requireAuth, async (_req: Request, res: Response) => {
   }
 })
 
-/** Ajustar manualmente el próximo número de folio: body { delta: 1 } sube, { delta: -1 } baja. Solo admin o gerente. */
+/** Ajustar manualmente el próximo número de folio: body { delta: 1 } sube, { delta: -1 } baja. Admin, gerente o relacioneslaborales. */
 router.patch('/sequence', requireAuth, async (req: AuthRequest, res: Response) => {
-  const puede = req.user?.rol === 'admin' || req.user?.rol === 'gerente'
+  const email = (req.user?.email || '').trim().toLowerCase()
+  const puede = req.user?.rol === 'admin' || req.user?.rol === 'gerente' || email === 'relacioneslaborales@tacticalsupport.com.mx'
   if (!puede) {
     return res.status(403).json({ error: 'Sin permiso para ajustar el folio' })
   }
